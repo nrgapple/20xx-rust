@@ -1,5 +1,6 @@
 //! Ports from `src/melee/ft` (fighters).
 
+pub mod action;
 pub mod common;
 pub mod data;
 pub mod ext_attrs;
@@ -7,6 +8,8 @@ mod ext_data;
 pub mod fighter;
 pub mod ft_081b;
 pub mod kinds;
+pub mod motion;
+mod motion_data;
 
 use data::{CommonData, FighterAttributes};
 use hsd_dat::{Archive, Result};

@@ -27,7 +27,7 @@ SCALARS = {
     "float": ("f32", 4), "f32": ("f32", 4),
     "int": ("i32", 4), "s32": ("i32", 4), "enum_t": ("i32", 4), "BOOL": ("i32", 4),
     "bool": ("i32", 4), "FighterKind": ("i32", 4), "HitCapsuleState": ("i32", 4),
-    "u32": ("u32", 4), "uint": ("u32", 4),
+    "u32": ("u32", 4), "uint": ("u32", 4), "uintptr_t": ("u32", 4),
     "u16": ("u16", 2), "s16": ("i16", 2),
     "u8": ("u8", 1), "s8": ("i8", 1),
     "Vec2": ("Vec2", 4), "Vec3": ("Vec3", 4),
@@ -40,7 +40,8 @@ KEYWORDS = {"type", "move", "ref", "match", "loop", "box", "fn", "impl", "use", 
 DECL = re.compile(
     r"(?:/\*\s*(?:fp)?\+(?:0[xX])?([0-9A-Fa-f]+)[^*]*\*/\s*)?"  # optional offset annotation
     r"((?:const\s+)?(?:struct\s+|union\s+)?\w+)\s*(\**)\s*"  # type and pointer stars
-    r"(\w+)\s*((?:\[[^\]]+\])*)\s*(?:DAT_\w+\([^;]*\)\s*)*;"  # name, arrays
+    r"(\w+|\(\s*\*\s*\w+\s*\))\s*((?:\[[^\]]+\])*)\s*"  # name (or `(*name)`), arrays
+    r"(?:DAT_\w+(?:\([^;]*?\))?\s*)*;"  # dat_macros.h tags, e.g. DAT_EXTENT
 )
 
 
@@ -155,8 +156,15 @@ OVERRIDES = {}
 def generate(sources, name, rust_names, emitted, out):
     body = collapse_inline_structs(strip_comments(find_struct(sources, name)))
     fields, base = [], None
+    # A declaration DECL cannot parse would silently drop a field.
+    unparsed = DECL.sub("", body)
+    if ";" in unparsed:
+        sys.exit(f"{name}: unparsed declaration near {unparsed.split(';')[0].strip()!r}")
     for match in DECL.finditer(body):
         offset, ctype, stars, field, arrays = match.groups()
+        if field.startswith("("):
+            # `T (*name)[N]` is one pointer (to an array of N), not an array.
+            field, stars, arrays = field.strip("()* \t\n"), stars + "*", ""
         if offset is not None:
             offset = int(offset, 16)
             base = offset if base is None else base
