@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/gc-disc", "tools/gc-inspect"]
+members = ["crates/gc-disc", "crates/hsd-dat", "crates/melee", "crates/ppc-asm", "tools/dat-inspect", "tools/dol-inspect", "tools/gc-inspect"]
 resolver = "2"
 
 [workspace.package]

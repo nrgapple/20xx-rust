@@ -8,17 +8,27 @@ with responsive controls**. The proposed direction is Rust compiled to WebAssemb
 deterministic simulation, and rollback netcode. Rendering, audio, browser input,
 and networking should stay outside the simulation core.
 
-The workspace starts with a disc inspector and executable extractor. A native
-Rust game port has not been implemented yet. See [research/status.md](research/status.md)
-for verified acquisition and binary findings.
+Game logic is being hand-ported to Rust from the matching Melee decompilation,
+function by function. The scope is tournament-style play: all characters and
+stages, no items, online. Disc, archive, and executable tooling works. The
+first fighter data and movement code is ported and tested, but nothing is
+playable yet. See [research/porting-plan.md](research/porting-plan.md) for the
+plan and fidelity rules, and [research/status.md](research/status.md) for
+verified findings.
 
 The verified game image is `originals/20xx-hp-5.0.2.iso`. Both the original Melee
 image and patched 20XX image match the full-disc checksums published with the patch.
 
 ## Layout
 
-- `crates/gc-disc`: dependency-free Rust reader for GameCube disc and DOL headers.
-- `tools/gc-inspect`: CLI to inspect ISO/GCM images and extract their main DOL.
+- `crates/gc-disc`: dependency-free reader for GameCube discs (header, DOL, FST files).
+- `crates/hsd-dat`: reader for HAL HSD `.dat` archives (relocations, symbols, big-endian fields).
+- `crates/ppc-asm`: partial Gekko disassembler for porting audits (floating-point ops in full).
+- `crates/melee`: the Rust port. Module layout mirrors the decomp.
+- `tools/gc-inspect`: CLI to inspect ISO/GCM images, list files, and extract the DOL or files.
+- `tools/dat-inspect`: validate every archive on a disc, or list one archive's symbols.
+- `tools/dol-inspect`: disassemble functions by decomp symbol; diff two DOLs by symbol.
+- `tools/gen_dat_structs.py`: generate offset-checked Rust data layouts from decomp C structs.
 - `tools/build_20xx.py`: checksum-verified builder using the official xdelta patch.
 - `research`: acquisition records, findings, and the next porting steps.
 - `originals`: ignored disc images, patches, and extracted executables.
@@ -54,7 +64,16 @@ make patch  # requires the base ISO, downloaded patch, Python 3, and xdelta3
 make inspect DISC=originals/20xx-hp-5.0.2.iso
 cargo run -p gc-inspect -- originals/melee-ntsc-1.02.iso --extract-dol originals/melee-1.02.dol
 cargo run -p gc-inspect -- originals/20xx-hp-5.0.2.iso --extract-dol originals/20xx-5.0.2.dol
+cargo run -p gc-inspect -- originals/20xx-hp-5.0.2.iso --list
+cargo run -p dat-inspect -- originals/melee-ntsc-1.02.iso PlFx.dat
+cargo run -p dol-inspect -- originals/melee-1.02.dol reference/melee/config/GALE01/symbols.txt ftCommon_Fall
+cargo run -p dol-inspect -- --diff originals/melee-1.02.dol originals/20xx-5.0.2.dol reference/melee/config/GALE01/symbols.txt
+cargo run -p melee --example fighter_attrs -- originals/melee-ntsc-1.02.iso PlFx.dat ftDataFox
 ```
+
+`make check` also runs `crates/melee/tests/disc_data.rs`, which loads real data
+from `originals/20xx-hp-5.0.2.iso` (or `MELEE_ISO`). Without a disc those tests
+print a note and pass.
 
 The inspector supports uncompressed GameCube ISO/GCM files, checks section bounds,
 and refuses to overwrite an extraction. It does not run the game or convert RVZ,

@@ -1,0 +1,11 @@
+[package]
+name = "melee"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+hsd-dat = { path = "../hsd-dat" }
+
+[dev-dependencies]
+gc-disc = { path = "../gc-disc" }

@@ -3,6 +3,22 @@
 version = 4
 
 [[package]]
+name = "dat-inspect"
+version = "0.1.0"
+dependencies = [
+ "gc-disc",
+ "hsd-dat",
+]
+
+[[package]]
+name = "dol-inspect"
+version = "0.1.0"
+dependencies = [
+ "gc-disc",
+ "ppc-asm",
+]
+
+[[package]]
 name = "gc-disc"
 version = "0.1.0"
 
@@ -12,3 +28,19 @@ version = "0.1.0"
 dependencies = [
  "gc-disc",
 ]
+
+[[package]]
+name = "hsd-dat"
+version = "0.1.0"
+
+[[package]]
+name = "melee"
+version = "0.1.0"
+dependencies = [
+ "gc-disc",
+ "hsd-dat",
+]
+
+[[package]]
+name = "ppc-asm"
+version = "0.1.0"

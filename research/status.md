@@ -67,8 +67,41 @@ Source locations:
 - Installed native macOS `xdelta3` through Homebrew (`xdelta` 3.2.2).
 - Disc images, extracted binaries, downloads, and reference checkouts are ignored by Git.
 
-## Next research step
+## Port start — 2026-10-18 (later session)
 
-Map the remaining 20XX injection sites to named base-game functions and analyze
-the extracted AI engine. Select one bounded subsystem for a Rust behavior port
-and comparison with the reference game. No game simulation or multiplayer exists yet.
+User decisions: hand-port game logic to Rust; scope is tournament-style play
+(all characters and stages, no items, online). Plan, fidelity rules, and
+20XX-vs-vanilla findings: [porting-plan.md](porting-plan.md).
+
+Observed this session:
+
+- The decomp marks all 1,117 objects `Matching`; 985 of 987 of its game and
+  HSD C files parse for a little-endian ILP32 target.
+- `gc-disc` reads the disc FST: 1,741 files on the 20XX disc, with
+  `AI_Engine.bin` at the offset recorded above. 933 of 935 non-animation
+  archives across both discs parse with `hsd-dat`. The 33 `Pl*AJ.dat` failures
+  are expected: these are banks of concatenated archives, loaded in slices.
+  `TyMnInfo.dat`/`.usd` (trophy data) have unaligned relocations, which
+  the strict parser rejects.
+- The vanilla→20XX DOL change map by decomp symbol is in
+  [dol-symbol-diff.txt](dol-symbol-diff.txt): 410 functions, 613 objects, and
+  616 ranges outside any symbol, totaling 77,566 bytes in loaded sections.
+  The other 19 of the earlier 77,585 are unused DOL header bytes `0xE4`–`0xF7`.
+- 20XX includes UCF v0.8 (`Mechanics & HUD/Gameplay.txt`).
+- Fighter archives are identical between discs except `PlCa.dat`, and many
+  tournament stage files are replaced by 20XX alternates. Details in the plan.
+- `ftCommonData` and Fox's `ftCo_DatAttrs` load with exact values from both
+  discs. All 14 decomp `@datvalue` annotations and published Fox values match.
+- The decomp annotates `ftCommonData.x808` as `+804`; its name and layout
+  give `+808`.
+- Ported and unit-tested: `HSD_Rand`/`Randf`/`Randi` and 28 movement helpers
+  from `ftcommon.c`. Their machine code has no fused multiply-adds (audited
+  with `dol-inspect`). The port crates build for `wasm32-unknown-unknown`.
+
+Nothing renders or plays yet; there is no simulation loop and no multiplayer.
+
+## Next step
+
+Generate the remaining `ftData` layouts (every character's special attributes),
+then stage collision data. Then start the HSD animation and joint system,
+which ECBs and hitboxes depend on. See phase 2 of the porting plan.

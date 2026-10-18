@@ -2,6 +2,8 @@
 
 - Target Super Smash Bros. Melee 20XX Hack Pack 5.0.2, based on NTSC-U Melee 1.02 (GALE01, revision byte 2).
 - Product target: a browser website where friends play faithful Melee with low perceived input latency. Target Rust/WebAssembly and deterministic simulation with rollback; keep simulation independent of rendering, audio, browser APIs, and transport.
+- Scope (user decision, 2026-10-18): tournament-style play first. All characters and stages, no items, online multiplayer. Other modes are not a current focus.
+- Approach (user decision, 2026-10-18): hand-port game logic to Rust from the matching decomp, function by function, citing each decomp symbol and 1.02 address. Do not recompile the decomp's C or emulate the DOL. Follow the porting rules in `crates/melee/src/lib.rs` and `research/porting-plan.md`; audit float code with `dol-inspect` before porting it.
 - Treat WebRTC peer transport and private friend-room signaling as proposed architecture until feasibility is measured. Do not promise latency targets without browser/device/network measurements.
 - Keep original discs, extracted executables, patches, assets, and downloaded reference checkouts out of Git. Preserve originals; write derived files to new paths.
 - Record acquisition URLs, upstream commits, hashes, and observed findings in research/. Distinguish observations from proposed port behavior.

@@ -3,6 +3,12 @@
 User direction, 2026-10-18: port Melee/20XX to a website where friends can play
 online with extremely low latency.
 
+## Decided (user, 2026-10-18)
+
+- Hand-port the game logic to Rust from the matching decomp (not recompiled C,
+  not emulation). Scope is tournament-style play: all characters and stages,
+  no items, online multiplayer. See [porting-plan.md](porting-plan.md).
+
 ## Proposed direction
 
 - Compile a platform-independent Rust simulation to WebAssembly. Keep gamepad sampling,
