@@ -1,0 +1,6 @@
+{"tasks":[
+  {"id":"build","label":"Build Rust inspection tools","command":"make build"},
+  {"id":"check","label":"Format, lint, and test Rust workspace","command":"make check"},
+  {"id":"test","label":"Test disc parser","command":"make test"},
+  {"id":"patch","label":"Build verified 20XX 5.0.2 ISO from local base","command":"make patch"}
+]}

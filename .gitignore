@@ -1,0 +1,13 @@
+/target/
+/originals/*
+!/originals/README.md
+/reference/*
+!/reference/README.md
+.DS_Store
+__pycache__/
+*.iso
+*.gcm
+*.rvz
+*.dol
+*.xdelta
+*.part

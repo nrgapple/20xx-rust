@@ -1,0 +1,7 @@
+[workspace]
+members = ["crates/gc-disc", "tools/gc-inspect"]
+resolver = "2"
+
+[workspace.package]
+edition = "2021"
+publish = false

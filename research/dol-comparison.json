@@ -1,0 +1,19 @@
+{
+  "base_size": 4425184,
+  "patched_size": 4425184,
+  "differing_byte_positions": 77585,
+  "hooks": [
+    {
+      "runtime_address": "0x8016e91c",
+      "dol_offset": "0x16b4fc",
+      "base_bytes": "80010024",
+      "patched_bytes": "4802611c"
+    },
+    {
+      "runtime_address": "0x8006b008",
+      "dol_offset": "0x67be8",
+      "base_bytes": "907f065c",
+      "patched_bytes": "907f065c"
+    }
+  ]
+}

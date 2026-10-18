@@ -1,0 +1,106 @@
+{
+  "recorded_at": "2026-10-18T21:50:42.441512+00:00",
+  "target": "20XX Hack Pack 5.0.2 / Melee NTSC-U 1.02",
+  "release_url": "https://github.com/DRGN-DRC/20XX-HACK-PACK/releases/tag/v5.0.2",
+  "download_url": "https://github.com/DRGN-DRC/20XX-HACK-PACK/releases/download/v5.0.2/20XXHP.5.0.2.Creator.zip",
+  "upstream_release_digest": null,
+  "files": [
+    {
+      "path": "originals/downloads/20XXHP.5.0.2.Creator.zip",
+      "size": 677694750,
+      "sha256": "a0aa4958a2228de7cc9513c6014a8bb545bec7ee539cb67fb2468c10ad50e4e3"
+    },
+    {
+      "path": "originals/downloads/creator/20XXHP 5.0.2 Creator/SSBM, 20XXHP 5.0.2 patch.xdelta",
+      "size": 677843767,
+      "sha256": "7f675995e000eda80cfdb340a1272b4370d8ef492cc7f576bf9bfa5e581048a5"
+    },
+    {
+      "path": "originals/downloads/melee-ntsc-1.02.zip",
+      "size": 1132395343,
+      "sha256": "f6388520cec28a5f9bff97efba912aa3dfa70508b762a23914b58d51d3062e48",
+      "md5": "abae63acd14c41d79d679fc012101b01",
+      "source_url": "https://archive.org/download/GameCube-Redump-2024-Individual-Games-Part2/Super%20Smash%20Bros.%20Melee%20%28USA%29%20%28En%2CJa%29%20%28Rev%202%29.zip"
+    },
+    {
+      "path": "originals/downloads/melee-ntsc-1.02.rvz",
+      "size": 1133079700,
+      "sha256": "51edcac0c1f969f15145062f26cd8d317cf9f3bbcc7ca368a61c16989524fc6e",
+      "md5": "223465def69414ebe2998f2876731065"
+    },
+    {
+      "path": "originals/downloads/dolphin-2609a-universal.dmg",
+      "size": 42010379,
+      "sha256": "9a810043538f21b53cf8f8f747b1672df74895d3d6eb30940d96042823f20ecb",
+      "md5": "98a72ba0b28f7042b9c11ff93808805f",
+      "source_url": "https://dl.dolphin-emu.org/releases/2609a/dolphin-2609a-universal.dmg",
+      "retained": false,
+      "used_for_conversion": false
+    },
+    {
+      "path": "originals/melee-ntsc-1.02.iso",
+      "size": 1459978240,
+      "sha256": "0de05981a34156b9cedcef73c73d4244ac05cf6149ab3c9cfed917698819e464",
+      "md5": "0e63d4223b01d9aba596259dc155a174",
+      "sha1": "d4e70c064cc714ba8400a849cf299dbd1aa326fc"
+    },
+    {
+      "path": "originals/20xx-hp-5.0.2.iso",
+      "size": 1459978240,
+      "sha256": "6a23c731a95a076e531ce38d60c699b4c73fc11a035e42afb390f6d4ab96acea",
+      "md5": "d926ba5b39551f5245fd655bc1dfeb3f",
+      "sha1": "cb7cc87e8ad4173e2c9e72f55deddda432a03d3b"
+    },
+    {
+      "path": "originals/melee-1.02.dol",
+      "size": 4425184,
+      "sha256": "dc21504513424350bda17a7c65e82371b45112a5dfc1e9f2749a8b7ab0eff646",
+      "md5": "277b6c09847602209895d011c5a3a38b",
+      "sha1": "08e0bf20134dfcb260699671004527b2d6bb1a45"
+    },
+    {
+      "path": "originals/20xx-5.0.2.dol",
+      "size": 4425184,
+      "sha256": "442d16f1d4e83616fce9be3c7576bdc84b722be8cd763cae1633f44d059b55d0",
+      "md5": "db67577af4632d51af1c4f06c36e994b",
+      "sha1": "334fb78f5f4d5378b5c4c966786c871ba50ecc8b"
+    },
+    {
+      "path": "originals/20xx-5.0.2-AI_Engine.bin",
+      "size": 20804,
+      "sha256": "c9b4489c0a58f2ee1a01d1567f173e597140f05361f3c73c66bfc8705dfac84f",
+      "md5": "0ac65cb59cc82eb7fa0b0d9a851eb58d",
+      "sha1": "710e481800f08876697d2346b4a221a883a3c0c2"
+    },
+    {
+      "path": "originals/downloads/nodtool-macos-arm64",
+      "size": 3481936,
+      "sha256": "524c0b27c0c4289e435df4474d288ea7e63d6a34814cc7c650231688dd1e53b4",
+      "md5": "8083f94388f0e280d6fe318ac0fbaa17",
+      "sha1": "02aa0e23ab805f650b0d2127819ace686823ff74",
+      "source_url": "https://github.com/encounter/nod/releases/download/v2.0.0-alpha.12/nodtool-macos-arm64",
+      "expected_sha256": "524c0b27c0c4289e435df4474d288ea7e63d6a34814cc7c650231688dd1e53b4"
+    }
+  ],
+  "references": [
+    {
+      "path": "reference/20xx-hack-pack",
+      "url": "https://github.com/DRGN-DRC/20XX-HACK-PACK.git",
+      "commit": "ae2253f1e3f4ad47bd3bbbb7f324985a1bd6b8f9"
+    },
+    {
+      "path": "reference/melee",
+      "url": "https://github.com/doldecomp/melee.git",
+      "commit": "f0cdbb0a7046aea44c7177fd72abf33c3d2af4d4"
+    }
+  ],
+  "expected_md5": {
+    "melee-ntsc-1.02.iso": "0e63d4223b01d9aba596259dc155a174",
+    "20xx-hp-5.0.2.iso": "d926ba5b39551f5245fd655bc1dfeb3f"
+  },
+  "archive_source_metadata_md5": "abae63acd14c41d79d679fc012101b01",
+  "dolphin_expected_sha256": "9a810043538f21b53cf8f8f747b1672df74895d3d6eb30940d96042823f20ecb",
+  "conversion_command": "originals/downloads/nodtool-macos-arm64 convert --md5 originals/downloads/melee-ntsc-1.02.rvz originals/melee-ntsc-1.02.iso",
+  "patch_command": "make patch",
+  "status": "Both full-disc MD5s match official 20XX release instructions; vanilla DOL SHA-1 matches doldecomp/melee README."
+}
