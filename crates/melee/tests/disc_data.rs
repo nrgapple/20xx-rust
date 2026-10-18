@@ -72,3 +72,17 @@ fn fox_attributes_match_known_values() {
     assert_eq!(fox.air_drift_max, 0.83);
     assert_eq!(fox.weight, 75.0);
 }
+
+#[test]
+fn every_fighter_has_attributes() {
+    for &(name, file, symbol) in melee::ft::kinds::FIGHTERS {
+        let Some(archive) = disc_archive(file) else {
+            return;
+        };
+        let attrs = load_attributes(&archive, symbol).unwrap_or_else(|e| panic!("{name}: {e}"));
+        assert!(
+            attrs.gravity > 0.0 && attrs.terminal_velocity > 0.0,
+            "{name}: implausible fall attributes {attrs:?}"
+        );
+    }
+}

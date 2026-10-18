@@ -19,12 +19,37 @@ verified findings.
 The verified game image is `originals/20xx-hp-5.0.2.iso`. Both the original Melee
 image and patched 20XX image match the full-disc checksums published with the patch.
 
+## Website
+
+The browser inspector is live at https://20xx-rust.champtoday.workers.dev.
+Open a Melee 1.02 or 20XX 5.0.2 ISO there. It is read locally in the browser
+and never uploaded. The page identifies the disc, shows every fighter's
+attributes, and runs the ported Fall physics in an interactive plot. It is
+not the playable game.
+
+Sources are in `web/` and `crates/melee-web`. `make web` builds `web/dist`,
+`make serve` serves it at http://localhost:8787, and `make deploy` deploys it
+with Wrangler (`wrangler.jsonc`, Cloudflare Workers static assets).
+
+### Deployment
+
+`.github/workflows/ci.yml` runs `make check` and builds the site for every
+push and pull request. Pushes to `main` then deploy to Cloudflare through the
+`production` GitHub environment. This needs:
+
+- repository variable `CLOUDFLARE_ACCOUNT_ID` (already set);
+- repository secret `CLOUDFLARE_API_TOKEN`: a Cloudflare API token created
+  from the "Edit Cloudflare Workers" template, saved with
+  `gh secret set CLOUDFLARE_API_TOKEN`.
+
 ## Layout
 
 - `crates/gc-disc`: dependency-free reader for GameCube discs (header, DOL, FST files).
 - `crates/hsd-dat`: reader for HAL HSD `.dat` archives (relocations, symbols, big-endian fields).
 - `crates/ppc-asm`: partial Gekko disassembler for porting audits (floating-point ops in full).
 - `crates/melee`: the Rust port. Module layout mirrors the decomp.
+- `crates/melee-web`: WebAssembly exports used by the browser inspector.
+- `web`: the inspector's static page (HTML, CSS, JavaScript).
 - `tools/gc-inspect`: CLI to inspect ISO/GCM images, list files, and extract the DOL or files.
 - `tools/dat-inspect`: validate every archive on a disc, or list one archive's symbols.
 - `tools/dol-inspect`: disassemble functions by decomp symbol; diff two DOLs by symbol.
@@ -35,7 +60,7 @@ image and patched 20XX image match the full-disc checksums published with the pa
 - `reference`: ignored checkouts of the 20XX source library and Melee decompilation.
 
 The normal entry point is `~/Projects/20xx-rust`; files are stored on the external SSD.
-No remote repository or hosted service is configured.
+The repository is hosted privately at https://github.com/nrgapple/20xx-rust.
 
 ## Claude Remote Control
 

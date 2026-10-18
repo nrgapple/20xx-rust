@@ -74,6 +74,74 @@ impl<T: DatField, const N: usize> DatField for [T; N] {
     }
 }
 
+/// JSON rendering of data values, for tools and the web inspector.
+/// Non-finite floats become `null`.
+pub trait DatJson {
+    fn write_json(&self, out: &mut String);
+
+    fn to_json(&self) -> String {
+        let mut out = String::new();
+        self.write_json(&mut out);
+        out
+    }
+}
+
+macro_rules! json_display {
+    ($($ty:ty),*) => {$(
+        impl DatJson for $ty {
+            fn write_json(&self, out: &mut String) {
+                out.push_str(&self.to_string());
+            }
+        }
+    )*};
+}
+json_display!(i32, u32, u16, i16, u8, i8);
+
+impl DatJson for f32 {
+    fn write_json(&self, out: &mut String) {
+        if self.is_finite() {
+            // Shortest representation that round-trips to the same f32.
+            out.push_str(&format!("{self:?}"));
+        } else {
+            out.push_str("null");
+        }
+    }
+}
+
+impl DatJson for Vec2 {
+    fn write_json(&self, out: &mut String) {
+        [self.x, self.y].write_json(out);
+    }
+}
+
+impl DatJson for Vec3 {
+    fn write_json(&self, out: &mut String) {
+        [self.x, self.y, self.z].write_json(out);
+    }
+}
+
+impl DatJson for DatPtr {
+    fn write_json(&self, out: &mut String) {
+        match self.0 {
+            Some(offset) => offset.write_json(out),
+            None => out.push_str("null"),
+        }
+    }
+}
+
+impl<T: DatJson, const N: usize> DatJson for [T; N] {
+    fn write_json(&self, out: &mut String) {
+        out.push('[');
+        for (index, value) in self.iter().enumerate() {
+            if index > 0 {
+                out.push(',');
+            }
+            value.write_json(out);
+        }
+        out.push(']');
+    }
+}
+
 /// Declare a struct read from archive data. Each field lists its byte offset
 /// within the struct, as annotated in the decomp; `size` is the C `sizeof`.
 macro_rules! dat_struct {
@@ -95,6 +163,23 @@ macro_rules! dat_struct {
             #[allow(dead_code)]
             pub const FIELDS: &'static [(&'static str, u32, u32)] =
                 &[$((stringify!($field), $offset, <$ty as DatField>::SIZE),)*];
+        }
+
+        impl $crate::dat::DatJson for $name {
+            fn write_json(&self, out: &mut String) {
+                out.push('{');
+                let mut first = true;
+                $(
+                    if !first {
+                        out.push(',');
+                    }
+                    first = false;
+                    out.push_str(concat!("\"", stringify!($field), "\":"));
+                    $crate::dat::DatJson::write_json(&self.$field, out);
+                )*
+                let _ = first;
+                out.push('}');
+            }
         }
 
         impl DatField for $name {
@@ -123,4 +208,25 @@ pub(crate) fn check_layout(fields: &[(&str, u32, u32)], size: u32) {
         end = offset + len;
     }
     assert!(end <= size, "fields end at {end:#x}, past size {size:#x}");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn json_round_trips_floats_and_nulls() {
+        assert_eq!(0.23f32.to_json(), "0.23");
+        assert_eq!(f32::NAN.to_json(), "null");
+        assert_eq!([1.0f32, -2.5].to_json(), "[1.0,-2.5]");
+        assert_eq!(DatPtr(None).to_json(), "null");
+        let attrs = crate::ft::data::FighterAttributes {
+            gravity: 0.23,
+            ..Default::default()
+        };
+        let json = attrs.to_json();
+        assert!(json.starts_with("{\"walk_accel_mul\":0.0,"));
+        assert!(json.contains("\"gravity\":0.23,"));
+        assert!(json.ends_with("\"weight_independent_throws_mask\":0}"));
+    }
 }

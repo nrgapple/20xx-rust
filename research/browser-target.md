@@ -54,4 +54,4 @@ rendering engine, or multiplayer can be delivered by translating a few functions
   native-port project worth evaluating before committing to a complete rewrite.
   Its published claims have not been locally validated here.
 
-No website, signaling service, room system, or public exposure has been created.
+A static inspector page is deployed at https://20xx-rust.champtoday.workers.dev (Cloudflare Workers static assets; no game data hosted). No signaling service, room system, or multiplayer exists yet.

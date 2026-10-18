@@ -1,6 +1,6 @@
 CARGO := $(HOME)/.cargo/bin/cargo
 
-.PHONY: build check test format inspect patch
+.PHONY: build check test format inspect patch web serve deploy
 build:
 	$(CARGO) build --workspace
 check:
@@ -15,3 +15,9 @@ inspect:
 	$(CARGO) run -p gc-inspect -- "$(DISC)"
 patch:
 	python3 tools/build_20xx.py
+web:
+	tools/build-web.sh
+serve: web
+	python3 -m http.server 8787 --directory web/dist
+deploy: web
+	npx -y wrangler@4 deploy

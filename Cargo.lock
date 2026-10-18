@@ -42,5 +42,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "melee-web"
+version = "0.1.0"
+dependencies = [
+ "gc-disc",
+ "hsd-dat",
+ "melee",
+]
+
+[[package]]
 name = "ppc-asm"
 version = "0.1.0"

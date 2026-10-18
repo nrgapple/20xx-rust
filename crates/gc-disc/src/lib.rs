@@ -40,14 +40,27 @@ fn be32(data: &[u8], offset: usize) -> u32 {
     u32::from_be_bytes(data[offset..offset + 4].try_into().unwrap())
 }
 
-impl Disc {
-    /// Inspect the disc header and DOL section table without loading the full image.
-    pub fn read(input: &mut (impl Read + Seek)) -> io::Result<Self> {
-        let image_size = input.seek(SeekFrom::End(0))?;
-        input.seek(SeekFrom::Start(0))?;
-        let mut header = [0u8; 0x440];
-        input.read_exact(&mut header)?;
-        if be32(&header, 0x1c) != 0xc2339f3d {
+/// The fixed 0x440-byte disc header ("boot.bin" + "bi2.bin" prefix).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Header {
+    pub game_id: String,
+    pub revision: u8,
+    pub title: String,
+    pub dol_offset: u64,
+    pub fst_offset: u64,
+    pub fst_size: u64,
+}
+
+impl Header {
+    pub const SIZE: usize = 0x440;
+
+    /// Parse the header and check that the DOL header and FST lie within an
+    /// image of `image_size` bytes. Usable without the rest of the image.
+    pub fn parse(header: &[u8], image_size: u64) -> io::Result<Self> {
+        if header.len() < Self::SIZE {
+            return Err(invalid("disc header truncated"));
+        }
+        if be32(header, 0x1c) != 0xc2339f3d {
             return Err(invalid("not an uncompressed GameCube ISO/GCM image"));
         }
         let game_id = std::str::from_utf8(&header[..6])
@@ -58,10 +71,41 @@ impl Disc {
             .next()
             .unwrap_or_default()
             .to_owned();
-        let dol_offset = u64::from(be32(&header, 0x420));
+        let dol_offset = u64::from(be32(header, 0x420));
         if dol_offset < 0x440 || dol_offset + 0x100 > image_size {
             return Err(invalid("DOL header outside disc image"));
         }
+        let fst_offset = u64::from(be32(header, 0x424));
+        let fst_size = u64::from(be32(header, 0x428));
+        if fst_offset + fst_size > image_size {
+            return Err(invalid("FST outside disc image"));
+        }
+        Ok(Self {
+            game_id,
+            revision: header[7],
+            title,
+            dol_offset,
+            fst_offset,
+            fst_size,
+        })
+    }
+}
+
+impl Disc {
+    /// Inspect the disc header and DOL section table without loading the full image.
+    pub fn read(input: &mut (impl Read + Seek)) -> io::Result<Self> {
+        let image_size = input.seek(SeekFrom::End(0))?;
+        input.seek(SeekFrom::Start(0))?;
+        let mut header = [0u8; Header::SIZE];
+        input.read_exact(&mut header)?;
+        let Header {
+            game_id,
+            revision,
+            title,
+            dol_offset,
+            fst_offset,
+            fst_size,
+        } = Header::parse(&header, image_size)?;
         input.seek(SeekFrom::Start(dol_offset))?;
         let mut dol = [0u8; 0x100];
         input.read_exact(&mut dol)?;
@@ -89,14 +133,9 @@ impl Disc {
         if sections.is_empty() {
             return Err(invalid("DOL has no nonempty sections"));
         }
-        let fst_offset = u64::from(be32(&header, 0x424));
-        let fst_size = u64::from(be32(&header, 0x428));
-        if fst_offset + fst_size > image_size {
-            return Err(invalid("FST outside disc image"));
-        }
         Ok(Self {
             game_id,
-            revision: header[7],
+            revision,
             title,
             dol_offset,
             dol_size,
@@ -111,9 +150,6 @@ impl Disc {
     pub fn files(&self, input: &mut (impl Read + Seek)) -> io::Result<Vec<FileEntry>> {
         let image_size = input.seek(SeekFrom::End(0))?;
         let fst_len = usize::try_from(self.fst_size).map_err(|_| invalid("FST too large"))?;
-        if fst_len < 12 {
-            return Err(invalid("FST too small"));
-        }
         input.seek(SeekFrom::Start(self.fst_offset))?;
         let mut fst = vec![0u8; fst_len];
         input.read_exact(&mut fst)?;
@@ -193,9 +229,12 @@ impl Dol {
     }
 }
 
-/// Parse an FST: 12-byte entries (the root's size field is the entry count),
-/// followed by a string table of NUL-terminated names.
-fn parse_fst(fst: &[u8], image_size: u64) -> io::Result<Vec<FileEntry>> {
+/// Parse a raw FST (as read from `Header::fst_offset`): 12-byte entries (the
+/// root's size field is the entry count), then NUL-terminated names.
+pub fn parse_fst(fst: &[u8], image_size: u64) -> io::Result<Vec<FileEntry>> {
+    if fst.len() < 12 {
+        return Err(invalid("FST too small"));
+    }
     let count = be32(fst, 8) as usize;
     let strings = count
         .checked_mul(12)
@@ -326,5 +365,6 @@ mod tests {
     fn rejects_other_formats_and_truncated_headers() {
         assert!(Disc::read(&mut Cursor::new(vec![0; 0x440])).is_err());
         assert!(Disc::read(&mut Cursor::new(vec![0; 10])).is_err());
+        assert!(parse_fst(&[0; 11], 0).is_err());
     }
 }

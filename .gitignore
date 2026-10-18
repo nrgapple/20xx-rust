@@ -11,3 +11,6 @@ __pycache__/
 *.dol
 *.xdelta
 *.part
+/web/dist/
+/node_modules/
+.wrangler/

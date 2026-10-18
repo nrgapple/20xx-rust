@@ -244,7 +244,19 @@ pub fn decode(word: u32, address: u32) -> Insn {
             16 => Some(insn("bclr", format!("{d}, {a}"))),
             528 if d == 20 => Some(insn(if word & 1 != 0 { "bctrl" } else { "bctr" }, "")),
             150 => Some(insn("isync", "")),
-            193 => Some(insn("crxor", format!("{d}, {a}, {}", bits(word, 11, 5)))),
+            33 | 129 | 193 | 225 | 257 | 289 | 417 | 449 => {
+                let name = match bits(word, 1, 10) {
+                    33 => "crnor",
+                    129 => "crandc",
+                    193 => "crxor",
+                    225 => "crnand",
+                    257 => "crand",
+                    289 => "creqv",
+                    417 => "crorc",
+                    _ => "cror",
+                };
+                Some(insn(name, format!("{d}, {a}, {}", bits(word, 11, 5))))
+            }
             _ => None,
         },
         20 | 21 => {
@@ -343,6 +355,8 @@ mod tests {
         assert_eq!(text(0x3860_ffff, 0), "li       r3, -1");
         assert_eq!(text(0x7c08_02a6, 0), "mflr     r0");
         assert_eq!(text(0x6000_0000, 0), "nop");
+        // `<=` on floats: fcmpo then cror eq, lt, eq.
+        assert_eq!(text(0x4c40_1382, 0), "cror     2, 0, 2");
         assert_eq!(text(0x0000_0000, 0), ".word    0x00000000 (op 0)");
     }
 }

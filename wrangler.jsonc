@@ -1,0 +1,8 @@
+{
+  // Static site for the browser inspector. Build first: tools/build-web.sh
+  "name": "20xx-rust",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./web/dist"
+  }
+}

@@ -3,6 +3,8 @@
 pub mod common;
 pub mod data;
 pub mod fighter;
+pub mod ft_081b;
+pub mod kinds;
 
 use data::{CommonData, FighterAttributes};
 use hsd_dat::{Archive, Result};

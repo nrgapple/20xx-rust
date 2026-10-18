@@ -392,6 +392,23 @@ pub fn fall_fast(fp: &mut Fighter) {
     fp.self_vel.y = -fp.co_attrs.fast_fall_velocity;
 }
 
+/// `ftCommon_CheckFallFast` (0x8007D528): start a fast fall when the stick
+/// was flicked down (within `common.x8c` frames) past `-common.x88` while
+/// falling. `<=` compiles to `fcmpo` + `cror`, so NaN never triggers it.
+pub fn check_fall_fast(fp: &mut Fighter, common: &CommonData) -> bool {
+    if !fp.fall_fast
+        && fp.self_vel.y < 0.0
+        && fp.input.lstick[0].y <= -common.x88
+        && i32::from(fp.active_timer.lstick[1]) < common.x8c
+    {
+        fp.fall_fast = true;
+        fp.active_timer.lstick[1] = 0xfe;
+        fp.play_sfx(0x96, 0x7f, 0x40);
+        return true;
+    }
+    false
+}
+
 /// `ftCommon_ClampFallSpeed` (0x8007D4F4)
 pub fn clamp_fall_speed(fp: &mut Fighter, val: f32) {
     if fp.self_vel.y > val {
@@ -498,6 +515,33 @@ mod tests {
         assert_eq!(fp.self_vel.y, 0.6);
         assert_eq!(fp.x74_self_accel.x, 0.4);
         assert_eq!(fp.x74_self_accel.y, 0.3);
+    }
+
+    #[test]
+    fn fast_fall_needs_a_recent_downward_flick_while_falling() {
+        let common = CommonData {
+            x88: 0.6625,
+            x8c: 4,
+            ..CommonData::default()
+        };
+        let mut fp = fighter();
+        fp.input.lstick[0].y = -1.0;
+        fp.active_timer.lstick[1] = 2;
+        // Rising: no fast fall.
+        fp.self_vel.y = 0.5;
+        assert!(!check_fall_fast(&mut fp, &common));
+        // Falling with a fresh flick: fast fall, timer consumed, sound requested.
+        fp.self_vel.y = -0.1;
+        assert!(check_fall_fast(&mut fp, &common));
+        assert!(fp.fall_fast);
+        assert_eq!(fp.active_timer.lstick[1], 0xfe);
+        assert_eq!(fp.sfx.len(), 1);
+        // A stale flick does not trigger.
+        let mut fp = fighter();
+        fp.self_vel.y = -0.1;
+        fp.input.lstick[0].y = -1.0;
+        fp.active_timer.lstick[1] = 4;
+        assert!(!check_fall_fast(&mut fp, &common));
     }
 
     #[test]
