@@ -9,6 +9,16 @@
 - **Scope: tournament-style play.** All characters and stages, no items, online
   multiplayer first. 20XX is the named target; see "20XX vs. vanilla" below.
 
+- **UCF 0.84** for online play (user, 2026-10-18), matching Slippi.
+- **No emulation and no emulator code** (user, 2026-10-18). Hardware details
+  such as `frsqrte` estimates must be re-derived or shown not to matter.
+- **Validation corpus:** agent's choice (user, 2026-10-18). Public Slippi
+  replays (`.slp`), parsed from the published format, are the first frame-level
+  oracle.
+- **Asset delivery: open.** The user wants friends to play from a link with
+  nothing to provide. That conflicts with not redistributing Nintendo's game
+  data; see the discussion in the session log and research/status.md.
+
 ## Why this is tractable now (observed)
 
 - The decomp at `f0cdbb0a7046` marks all 1,117 objects `Matching` in
