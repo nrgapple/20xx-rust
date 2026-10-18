@@ -59,15 +59,23 @@ fn images() -> Vec<Image> {
         ("vanilla", "MELEE_VANILLA_ISO", "melee-ntsc-1.02.iso"),
     ];
     let mut found = Vec::new();
-    for (label, var, default) in candidates {
+    for (expected, var, default) in candidates {
         let path = std::env::var_os(var)
             .map(PathBuf::from)
             .unwrap_or_else(|| root.join(default));
         let Ok(mut file) = File::open(&path) else {
-            eprintln!("skipping {label}: no disc image at {}", path.display());
+            eprintln!("skipping {expected}: no disc image at {}", path.display());
             continue;
         };
         let disc = Disc::read(&mut file).expect("readable disc");
+        // Label by content, not by which variable supplied the path: only the
+        // 20XX disc carries AI_Engine.bin.
+        let is_20xx = disc.find_file(&mut file, "AI_Engine.bin").is_ok();
+        let label = if is_20xx { "20XX" } else { "vanilla" };
+        if found.iter().any(|image: &Image| image.label == label) {
+            eprintln!("skipping duplicate {label} disc at {}", path.display());
+            continue;
+        }
         found.push(Image { label, disc, file });
     }
     found

@@ -154,6 +154,27 @@ Observed:
 - Single-precision results differ from rounded published figures, e.g.
   0.8 × 72.0 = 57.600002 in `f32`, exactly as the game computes it.
 
+## Parallel streams — 2026-10-18 (later)
+
+Six agents port in separate worktrees; findings arrive in `research/notes/`.
+
+- **Motion tables and subaction scripts (merged).** For all 33 fighter kinds,
+  both motion tables load. Counts come from the DOL tables
+  `ftData_Table_Unk0` (0x803C0FC8) and `ftData_UnkIntPairs` (0x803C25F4); the
+  decomp header has the latter's address wrong. The decoder covers all 59
+  opcodes, and every reachable script decodes on both discs: 10,077 scripts,
+  65,449 commands. All 8,011 animation slices parse and export their figatree.
+  Fox's up-smash decodes to the published frame data. Notable behaviors the
+  interpreter must keep:
+  - the hitbox command reads a flag from the next command's first word;
+  - Pichu's `FuraSleepLoop` ends in a NULL goto.
+  20XX's tournament AJ banks match vanilla byte for byte, with data appended.
+  The extra 146 bytes in 20XX's `PlCa.dat` are an appended debug-menu
+  script. Details: `notes/actions.md`.
+- 20XX's Frame Speed Modifier engine (hook at 0x80073338) is a debug-menu
+  feature. It is out of scope for online play unless shown to be active by
+  default.
+
 ## Next step
 
 Port the `mpLib` collision queries (floor/wall/ceiling line checks used by
