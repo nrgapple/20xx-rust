@@ -44,11 +44,36 @@ DECL = re.compile(
 )
 
 
-def array_len(expr, name, field):
-    """Evaluate an array bound made of integer literals and + - *."""
-    if not re.fullmatch(r"[\s0-9a-fA-FxX+\-*()]+", expr):
+def enum_value(sources, ident):
+    """Value of an enumerator, counting from the previous explicit value."""
+    for text in sources:
+        for body in re.findall(r"enum\s*\w*\s*\{([^}]*)\}", text):
+            value = -1
+            for item in body.split(","):
+                item = re.sub(r"//[^\n]*|/\*.*?\*/", "", item, flags=re.S).strip()
+                if not item:
+                    continue
+                key, _, explicit = item.partition("=")
+                try:
+                    value = int(explicit.strip(), 0) if explicit.strip() else value + 1
+                except (ValueError, TypeError):
+                    value = None  # symbolic value: unknown from here on
+                if key.strip() == ident and value is not None:
+                    return value
+    return None
+
+
+def array_len(expr, name, field, sources=()):
+    """Evaluate an array bound made of integer literals, enumerators, and + - * /."""
+    for ident in set(re.findall(r"\b[A-Za-z_]\w*\b", expr)) - {"x", "X"}:
+        value = enum_value(sources, ident)
+        if value is None:
+            sys.exit(f"{name}.{field}: unknown array bound {ident}")
+        expr = re.sub(r"\b" + ident + r"\b", str(value), expr)
+    if not re.fullmatch(r"[\s0-9a-fA-FxX+\-*/()]+", expr):
         sys.exit(f"{name}.{field}: unsupported array bound [{expr}]")
-    return eval(re.sub(r"\b0[xX]([0-9a-fA-F]+)\b", lambda m: str(int(m.group(1), 16)), expr), {}, {})
+    expr = re.sub(r"\b0[xX]([0-9a-fA-F]+)\b", lambda m: str(int(m.group(1), 16)), expr)
+    return eval(expr.replace("/", "//"), {}, {})  # C integer division
 
 
 def split_declarators(body):
@@ -141,7 +166,7 @@ def generate(sources, name, rust_names, emitted, out):
             ctype = OVERRIDES.pop((name, field.lower()))
             if stars or SIZES.get(old[0]) != SIZES.get(SCALARS[ctype][0]):
                 sys.exit(f"{name}.{field}: override must keep a scalar's size")
-        counts = [array_len(n, name, field) for n in re.findall(r"\[([^\]]+)\]", arrays)]
+        counts = [array_len(n, name, field, sources) for n in re.findall(r"\[([^\]]+)\]", arrays)]
         if stars:
             rtype, align = "DatPtr", 4
         elif ctype in SCALARS:

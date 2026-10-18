@@ -135,3 +135,114 @@ fn every_fighter_has_plausible_special_attributes() {
     }
     assert_eq!(loaded, 27, "26 selectable characters plus Nana");
 }
+
+/// Stage files come from the vanilla disc: 20XX replaces many of them with
+/// alternates. Uses `MELEE_VANILLA_ISO` or `originals/melee-ntsc-1.02.iso`.
+fn vanilla_archive(path: &str) -> Option<Archive> {
+    let iso = std::env::var_os("MELEE_VANILLA_ISO")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| {
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../originals/melee-ntsc-1.02.iso")
+        });
+    let Ok(mut file) = File::open(&iso) else {
+        eprintln!("skipping: no vanilla disc image at {}", iso.display());
+        return None;
+    };
+    let disc = Disc::read(&mut file).expect("readable disc");
+    let bytes = disc.read_file(&mut file, path).expect("file on disc");
+    Some(Archive::parse(&bytes).expect("valid archive"))
+}
+
+fn load_stage(file: &str) -> Option<melee::mp::lib::MpLib> {
+    use melee::gr::{ground_scale, load_ground_param};
+    let archive = vanilla_archive(file)?;
+    let param = load_ground_param(&archive).unwrap();
+    let coll = melee::mp::load_map_coll(&archive).unwrap();
+    Some(melee::mp::lib::MpLib::load(
+        coll,
+        ground_scale(Some(&param)),
+        false,
+    ))
+}
+
+/// Endpoints of floor line `id` after loading.
+fn floor(mp: &melee::mp::lib::MpLib, id: usize) -> ((f32, f32), (f32, f32), u16) {
+    let data = mp.coll_data.lines[mp.lines[id].inner.unwrap()];
+    let a = mp.vtx[data.v0_idx as usize].pos;
+    let b = mp.vtx[data.v1_idx as usize].pos;
+    ((a.x, a.y), (b.x, b.y), data.lo_flags)
+}
+
+#[test]
+fn final_destination_geometry() {
+    let Some(mp) = load_stage("GrNLa.dat") else {
+        return;
+    };
+    // The main floor spans the well-known ledge positions, x = +-85.5657.
+    let (left, _, left_flags) = floor(&mp, 0);
+    let (_, right, right_flags) = floor(&mp, 2);
+    assert!((left.0 + 85.5657).abs() < 1e-4 && left.1 == 0.0);
+    assert!((right.0 - 85.5657).abs() < 1e-4 && right.1 == 0.0);
+    assert_eq!(left_flags & 0x200, 0x200, "ledge");
+    assert_eq!(right_flags & 0x200, 0x200, "ledge");
+    // Floors chain left to right, then into the right wall.
+    assert_eq!(mp.line_get_next(0), 1);
+    assert_eq!(mp.line_get_next(1), 2);
+    assert_eq!(mp.line_get_prev(1), 0);
+}
+
+#[test]
+fn battlefield_geometry() {
+    let Some(mp) = load_stage("GrNBa.dat") else {
+        return;
+    };
+    // grGroundParam scale 0.8 applied to every vertex.
+    // Published figures are rounded; the game's own values are f32 products
+    // (e.g. 0.8 * 72.0 = 57.600002 in single precision), so compare loosely.
+    let platforms: Vec<_> = (0..6)
+        .map(|id| floor(&mp, id))
+        .filter(|&(_, _, flags)| flags & 0x100 != 0)
+        .map(|(a, b, _)| [a.0, a.1, b.0, b.1])
+        .collect();
+    let expected = [
+        [-57.6, 27.2, -20.0, 27.2],
+        [-18.8, 54.4, 18.8, 54.4],
+        [20.0, 27.2, 57.6, 27.2],
+    ];
+    assert_eq!(platforms.len(), 3);
+    for (got, want) in platforms.iter().zip(expected) {
+        for (g, w) in got.iter().zip(want) {
+            assert!((g - w).abs() < 1e-4, "{got:?} vs {want:?}");
+        }
+    }
+    let (edge, _, _) = floor(&mp, 0);
+    assert_eq!(edge, (-68.4, 0.0));
+    // Pass-through platforms are not linked to neighbors.
+    assert_eq!((mp.line_get_next(2), mp.line_get_prev(2)), (-1, -1));
+}
+
+#[test]
+fn tournament_stages_load() {
+    // Battlefield, Final Destination, Dream Land, Yoshi's Story, Fountain of
+    // Dreams, Pokemon Stadium.
+    for file in [
+        "GrNBa.dat",
+        "GrNLa.dat",
+        "GrOp.dat",
+        "GrSt.dat",
+        "GrIz.dat",
+        "GrPs.dat",
+    ] {
+        let Some(mp) = load_stage(file) else {
+            return;
+        };
+        assert!(!mp.lines.is_empty() && !mp.vtx.is_empty(), "{file}");
+        for (id, line) in mp.lines.iter().enumerate() {
+            if let Some(inner) = line.inner {
+                let data = mp.coll_data.lines[inner];
+                assert!((data.v0_idx as usize) < mp.vtx.len(), "{file} line {id}");
+                assert!((data.v1_idx as usize) < mp.vtx.len(), "{file} line {id}");
+            }
+        }
+    }
+}

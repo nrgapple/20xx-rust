@@ -137,8 +137,25 @@ Observed:
   skip without an ISO) and builds the site. Deploys from `main` need the
   `CLOUDFLARE_API_TOKEN` secret.
 
+## Stage collision — 2026-10-18 (later)
+
+- Stage `coll_data`, `grGroundParam`, and `mpLibLoad` (with
+  `mpPruneEmptyLines`, `mpLineGetNext`/`Prev`) are ported. On the vanilla
+  disc, Final Destination's floor spans x = ±85.5657 with ledge flags.
+  Battlefield (scale 0.8) gives ledges at ±68.4, side platforms at y = 27.2
+  (x 20–57.6), and the top platform at y = 54.4 (x ±18.8). All six common
+  tournament stages load with valid vertex references.
+- Line data: `hi_flags` holds the surface kind and becomes the runtime
+  `CollLine::flags`; `lo_flags` holds the platform (0x100) and ledge (0x200)
+  bits, which collision queries return.
+- `mpLibLoad` initializes its stage bounding box at the wrong extremes
+  (top/right +F32_MAX, bottom/left −F32_MAX), so the box never tightens. The
+  port keeps this behavior.
+- Single-precision results differ from rounded published figures, e.g.
+  0.8 × 72.0 = 57.600002 in `f32`, exactly as the game computes it.
+
 ## Next step
 
-Load stage collision data (`map_coll`) and port the `mpLib` line queries.
-Then start the HSD animation and joint system, which ECBs and hitboxes depend
+Port the `mpLib` collision queries (floor/wall/ceiling line checks used by
+`mpColl`) and islands. Then start the HSD animation and joint system, which ECBs and hitboxes depend
 on. See phase 2 of the porting plan.
