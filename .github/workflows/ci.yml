@@ -17,14 +17,14 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # rust-toolchain.toml selects the pinned toolchain, components, and targets.
       - run: rustup toolchain install
       - uses: Swatinem/rust-cache@v2
       # Disc-data tests print a note and pass: no game images exist in CI.
       - run: make check
       - run: tools/build-web.sh
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: web
           path: web/dist
@@ -38,8 +38,8 @@ jobs:
       name: production
       url: https://20xx-rust.champtoday.workers.dev
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with:
           name: web
           path: web/dist

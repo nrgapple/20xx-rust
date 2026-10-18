@@ -8,9 +8,31 @@ use crate::math::{Vec2, Vec3};
 use hsd_dat::{Archive, Result};
 
 /// A value stored in an archive at a fixed size.
-pub trait DatField: Sized {
+pub trait DatField: Sized + DatZero {
     const SIZE: u32;
     fn read(archive: &Archive, offset: u32) -> Result<Self>;
+}
+
+/// The all-zero value of a data type (`Default` for any array length).
+pub trait DatZero {
+    fn zero() -> Self;
+}
+
+macro_rules! zero_default {
+    ($($ty:ty),*) => {$(
+        impl DatZero for $ty {
+            fn zero() -> Self {
+                Self::default()
+            }
+        }
+    )*};
+}
+zero_default!(f32, i32, u32, u16, i16, u8, i8, Vec2, Vec3, DatPtr);
+
+impl<T: DatZero, const N: usize> DatZero for [T; N] {
+    fn zero() -> Self {
+        std::array::from_fn(|_| T::zero())
+    }
 }
 
 macro_rules! scalar {
@@ -153,9 +175,23 @@ macro_rules! dat_struct {
         size $size:literal
     ) => {
         $(#[$meta])*
-        #[derive(Debug, Clone, Copy, PartialEq, Default)]
+        #[derive(Debug, Clone, Copy, PartialEq)]
         pub struct $name {
             $(pub $field: $ty,)*
+        }
+
+        impl $crate::dat::DatZero for $name {
+            fn zero() -> Self {
+                Self {
+                    $($field: <$ty as $crate::dat::DatZero>::zero(),)*
+                }
+            }
+        }
+
+        impl Default for $name {
+            fn default() -> Self {
+                $crate::dat::DatZero::zero()
+            }
         }
 
         impl $name {

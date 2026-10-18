@@ -5,3 +5,11 @@ resolver = "2"
 [workspace.package]
 edition = "2021"
 publish = false
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
+
+[profile.release.package.melee-web]
+opt-level = "s"

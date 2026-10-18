@@ -53,6 +53,20 @@ Still to verify: the paired-single (`ps_*`) math in the HSD matrix library,
 trig/sqrt implementations (`src/MSL/trigf.c`, `math_ppc.h`, `frsqrte`).
 These need ports that are tested bit for bit against the original.
 
+## Layout verification
+
+Generated layouts (`tools/gen_dat_structs.py`, `tools/gen_ext_attrs.sh`) get
+three independent checks:
+
+1. Decomp `/* +OFFSET */` annotations agree with the computed layout. A lone
+   typo is accepted, with a warning, only when the next annotation agrees.
+2. Struct sizes match the machine code that copies them. For example, each
+   `*_Init_LoadSpecialAttrs` is a copy loop whose iteration count gives the size.
+3. Loaded disc values have no misalignment signatures: no integers holding
+   float bit patterns and no denormal-sized floats.
+   `tools/attr_access.py` then shows how 1.02 code actually loads each offset
+   (`lfs` = float, `lwz` = int), which settles disputed types.
+
 ## Validation strategy (proposed)
 
 - **Unit level:** per-function tests, and `dol-inspect` audits recorded in doc comments.
@@ -70,10 +84,10 @@ These need ports that are tested bit for bit against the original.
 ## Phases
 
 1. **Done:** disc/FST/DOL/HSD-archive readers, the PowerPC audit tool, the
-   20XX DOL change map, generated data layouts, the RNG, and 28 ported
-   `ftcommon.c` movement helpers.
-2. **Data foundation:** generate every character's `ftData` and special
-   attributes; stage collision data (`map_coll`); hurtbox and hitbox
+   20XX DOL change map, generated data layouts, the RNG, 30 ported
+   `ftcommon.c` / `ft_081B.c` movement functions, and every tournament
+   character's special attributes, checked against machine code and disc data.
+2. **Data foundation:** stage collision data (`map_coll`); hurtbox and hitbox
    descriptors; subaction (`ftAction`) scripts; and animation banks (`Pl*AJ.dat`
    slices; `hsd_dat::Archive::parse` accepts a byte slice, so this is untested
    on AJ banks rather than unsupported).

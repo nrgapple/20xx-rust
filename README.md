@@ -24,8 +24,8 @@ image and patched 20XX image match the full-disc checksums published with the pa
 The browser inspector is live at https://20xx-rust.champtoday.workers.dev.
 Open a Melee 1.02 or 20XX 5.0.2 ISO there. It is read locally in the browser
 and never uploaded. The page identifies the disc, shows every fighter's
-attributes, and runs the ported Fall physics in an interactive plot. It is
-not the playable game.
+common and fighter-specific attributes, and runs the ported Fall physics in
+an interactive plot. It is not the playable game.
 
 Sources are in `web/` and `crates/melee-web`. `make web` builds `web/dist`,
 `make serve` serves it at http://localhost:8787, and `make deploy` deploys it
@@ -54,6 +54,8 @@ push and pull request. Pushes to `main` then deploy to Cloudflare through the
 - `tools/dat-inspect`: validate every archive on a disc, or list one archive's symbols.
 - `tools/dol-inspect`: disassemble functions by decomp symbol; diff two DOLs by symbol.
 - `tools/gen_dat_structs.py`: generate offset-checked Rust data layouts from decomp C structs.
+- `tools/gen_ext_attrs.sh`: regenerate every character's special-attribute layout (with type corrections).
+- `tools/attr_access.py`: infer attribute field types from how 1.02 machine code loads them.
 - `tools/build_20xx.py`: checksum-verified builder using the official xdelta patch.
 - `research`: acquisition records, findings, and the next porting steps.
 - `originals`: ignored disc images, patches, and extracted executables.
@@ -94,6 +96,8 @@ cargo run -p dat-inspect -- originals/melee-ntsc-1.02.iso PlFx.dat
 cargo run -p dol-inspect -- originals/melee-1.02.dol reference/melee/config/GALE01/symbols.txt ftCommon_Fall
 cargo run -p dol-inspect -- --diff originals/melee-1.02.dol originals/20xx-5.0.2.dol reference/melee/config/GALE01/symbols.txt
 cargo run -p melee --example fighter_attrs -- originals/melee-ntsc-1.02.iso PlFx.dat ftDataFox
+cargo run -p melee --example ext_attrs -- originals/melee-ntsc-1.02.iso PlPr.dat ftDataPurin
+tools/attr_access.py ftPr_            # how Jigglypuff's code reads its attributes
 ```
 
 `make check` also runs `crates/melee/tests/disc_data.rs`, which loads real data

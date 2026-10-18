@@ -2,6 +2,8 @@
 
 pub mod common;
 pub mod data;
+pub mod ext_attrs;
+mod ext_data;
 pub mod fighter;
 pub mod ft_081b;
 pub mod kinds;

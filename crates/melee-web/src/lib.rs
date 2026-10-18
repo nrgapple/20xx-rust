@@ -9,6 +9,7 @@ use gc_disc::{parse_fst, Header};
 use hsd_dat::Archive;
 use melee::dat::DatJson;
 use melee::ft::data::CommonData;
+use melee::ft::ext_attrs::load_ext_attrs;
 use melee::ft::fighter::{Fighter, GroundOrAir};
 use melee::ft::{ft_081b, kinds, load_attributes, load_common_data};
 use std::cell::RefCell;
@@ -157,8 +158,9 @@ pub unsafe extern "C" fn load_common(ptr: *const u8, len: usize) -> i32 {
     })
 }
 
-/// Load a fighter's `ftCo_DatAttrs` from its archive bytes, given the index
-/// into [`kinds::FIGHTERS`], and return the attributes as JSON.
+/// Load a fighter from its archive bytes, given the index into
+/// [`kinds::FIGHTERS`]. Returns `{"common": ftCo_DatAttrs, "special":
+/// fighter-specific attributes or null}`.
 ///
 /// # Safety
 /// See [`bytes`].
@@ -169,11 +171,16 @@ pub unsafe extern "C" fn load_fighter(ptr: *const u8, len: usize, kind: usize) -
         let (_, _, symbol) = kinds::FIGHTERS.get(kind).ok_or("no such fighter")?;
         let archive = Archive::parse(file).map_err(|e| e.to_string())?;
         let attrs = load_attributes(&archive, symbol).map_err(|e| e.to_string())?;
+        let special = load_ext_attrs(&archive, symbol).map_err(|e| e.to_string())?;
         state.fighter = Some(Fighter {
             co_attrs: attrs,
             ..Fighter::default()
         });
-        Ok(attrs.to_json())
+        let special = special.map_or_else(|| "null".to_owned(), |s| s.to_json());
+        Ok(format!(
+            "{{\"common\":{},\"special\":{special}}}",
+            attrs.to_json()
+        ))
     })
 }
 

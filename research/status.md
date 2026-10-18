@@ -100,8 +100,45 @@ Observed this session:
 
 Nothing renders or plays yet; there is no simulation loop and no multiplayer.
 
+## Character data, web inspector, CI — 2026-10-18 (later)
+
+Observed:
+
+- Every tournament character's special attributes (`ftData::ext_attr`, 20
+  layouts covering 26 characters plus Nana) are generated. Each size matches
+  the copy loop in that character's `*_Init_LoadSpecialAttrs` in the 1.02
+  DOL. Clones call their original's copy function.
+- A plausibility scan of the loaded values found five decomp header type
+  errors, now corrected by generator overrides with recorded evidence.
+  `ftPurinAttributes` begins with the multi-jump table (`Fighter_x2D0_t`):
+  `x0` is an int (12) and `x14`–`x24` are floats (1.65, 1.59, 1.47, 1.36, 1.25).
+  Loads through `fp->x2D0` in `ftCo_800D74A4`/`ftCo_800D730C` confirm this.
+  Unused fields were typed by their contents: Falcon `x68` (int 2),
+  Ice Climbers `x1C` (1.5f), Zelda `x28`/`x30` (2.0f, 0.6f).
+- `ftPe_DatAttrs.speciallw_item_table` is annotated `+1C` in the decomp; the
+  layout and the following annotation give `+18`.
+- **Sound affects gameplay RNG.** `ft_PlaySFX` calls `HSD_Randi(200)` for
+  sound IDs 332–370 (after a per-fighter remap in `ft_80087D0C`), and
+  `lbaudio_ax.c` calls `HSD_Randi` elsewhere. Sound dispatch must run inside
+  the deterministic simulation, which emits events for the browser to play.
+  Until the remap is ported, the port records sound requests without
+  touching the RNG.
+- Ported `ftCommon_CheckFallFast` and `ft_80084DB0`, the shared airborne
+  physics callback (fast-fall check, gravity, drift). In `Fighter_procUpdate`,
+  `self_vel += self_accel` is a `PSVECAdd`, whose per-lane single rounding
+  equals `f32` adds.
+- Browser inspector deployed at https://20xx-rust.champtoday.workers.dev
+  (Cloudflare Workers static assets). It reads the chosen ISO locally with
+  `File.slice`, identifies vanilla vs 20XX by `AI_Engine.bin`, shows every
+  fighter's attributes, and plots the ported Fall physics. Verified in a
+  browser against both local discs. The WebAssembly module is 573 KB
+  (100 KB gzipped).
+- GitHub: private repo `nrgapple/20xx-rust`. CI runs `make check` (disc tests
+  skip without an ISO) and builds the site. Deploys from `main` need the
+  `CLOUDFLARE_API_TOKEN` secret.
+
 ## Next step
 
-Generate the remaining `ftData` layouts (every character's special attributes),
-then stage collision data. Then start the HSD animation and joint system,
-which ECBs and hitboxes depend on. See phase 2 of the porting plan.
+Load stage collision data (`map_coll`) and port the `mpLib` line queries.
+Then start the HSD animation and joint system, which ECBs and hitboxes depend
+on. See phase 2 of the porting plan.

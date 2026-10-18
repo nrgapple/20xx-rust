@@ -86,3 +86,52 @@ fn every_fighter_has_attributes() {
         );
     }
 }
+
+/// Scan a JSON rendering for misalignment signatures: integers holding float
+/// bit patterns (huge) or floats holding small integers (denormal-sized).
+/// Returns `field: value` for each suspicious scalar (array elements report
+/// their field name).
+fn misaligned_values(json: &str) -> Vec<String> {
+    let mut field = "";
+    let mut found = Vec::new();
+    for part in json.split(['{', '}', '[', ']', ',']) {
+        let value = match part.split_once("\":") {
+            Some((key, value)) => {
+                field = key.trim_start_matches('"');
+                value
+            }
+            None => part,
+        };
+        let Ok(number) = value.parse::<f64>() else {
+            continue;
+        };
+        let is_float = value.contains(['.', 'e', 'E']);
+        if (is_float && number != 0.0 && !(1e-6..1e7).contains(&number.abs()))
+            || (!is_float && number.abs() >= 1e7)
+        {
+            found.push(format!("{field}: {value}"));
+        }
+    }
+    found
+}
+
+#[test]
+fn every_fighter_has_plausible_special_attributes() {
+    use melee::dat::DatJson;
+    use melee::ft::ext_attrs::load_ext_attrs;
+    let mut loaded = 0;
+    for &(name, file, symbol) in melee::ft::kinds::FIGHTERS {
+        let Some(archive) = disc_archive(file) else {
+            return;
+        };
+        let Some(attrs) =
+            load_ext_attrs(&archive, symbol).unwrap_or_else(|e| panic!("{name}: {e}"))
+        else {
+            continue;
+        };
+        loaded += 1;
+        let bad = misaligned_values(&attrs.to_json());
+        assert!(bad.is_empty(), "{name}: suspicious values {bad:?}");
+    }
+    assert_eq!(loaded, 27, "26 selectable characters plus Nana");
+}

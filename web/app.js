@@ -110,22 +110,31 @@ function format(value) {
   return String(value);
 }
 
-async function loadFighter(index) {
-  const [, file] = state.fighters[index];
-  state.attrs = callWithBytes("load_fighter", await readFile(file), index);
-  $("highlights").replaceChildren(
-    ...HIGHLIGHTS.map(([key, label]) => card(label, format(state.attrs[key]))),
-  );
-  const rows = Object.entries(state.attrs).map(([key, value]) => {
+function rows(object, prefix = "") {
+  return Object.entries(object).flatMap(([key, value]) => {
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      return rows(value, `${prefix}${key}.`);
+    }
     const tr = document.createElement("tr");
     const k = document.createElement("td");
-    k.textContent = key;
+    k.textContent = prefix + key;
     const v = document.createElement("td");
     v.textContent = format(value);
     tr.append(k, v);
-    return tr;
+    return [tr];
   });
-  $("attrs").tBodies[0].replaceChildren(...rows);
+}
+
+async function loadFighter(index) {
+  const [, file] = state.fighters[index];
+  const data = callWithBytes("load_fighter", await readFile(file), index);
+  state.attrs = data.common;
+  $("highlights").replaceChildren(
+    ...HIGHLIGHTS.map(([key, label]) => card(label, format(state.attrs[key]))),
+  );
+  $("attrs").tBodies[0].replaceChildren(...rows(state.attrs));
+  $("special-details").hidden = !data.special;
+  $("special").tBodies[0].replaceChildren(...(data.special ? rows(data.special) : []));
   simulate();
 }
 

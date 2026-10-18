@@ -2,7 +2,13 @@
 """Generate Rust `dat_struct!` definitions from decomp C struct declarations.
 
 Usage:
-  gen_dat_structs.py HEADER [HEADER...] -- CName[=RustName] [...] > out.rs
+  gen_dat_structs.py HEADER|DIR [...] -- CName[=RustName] | CName.field:ctype [...] > out.rs
+
+`CName.field:ctype` overrides a field's C type where the decomp's header is
+wrong (same size only); record the evidence next to the generated output.
+
+A DIR contributes every `*.h` beneath it; earlier sources win when a name is
+defined twice. Structs a requested struct contains are generated too.
 
 Only structs made of scalars, Vec2/Vec3, GXColor, fixed arrays, pointers, and
 other structs named on the command line are supported. The generator computes the
@@ -12,6 +18,8 @@ the computed offset. Nested structs whose annotations are relative to
 the parent (e.g. FallCommon at +520) are rebased to their first field.
 """
 
+import glob
+import os
 import re
 import sys
 
@@ -30,10 +38,37 @@ SIZES = {"f32": 4, "i32": 4, "u32": 4, "u16": 2, "i16": 2, "u8": 1, "i8": 1,
 KEYWORDS = {"type", "move", "ref", "match", "loop", "box", "fn", "impl", "use", "mod"}
 
 DECL = re.compile(
-    r"(?:/\*\s*(?:fp)?\+([0-9A-Fa-f]+)[^*]*\*/\s*)?"  # optional offset annotation
+    r"(?:/\*\s*(?:fp)?\+(?:0[xX])?([0-9A-Fa-f]+)[^*]*\*/\s*)?"  # optional offset annotation
     r"((?:const\s+)?(?:struct\s+|union\s+)?\w+)\s*(\**)\s*"  # type and pointer stars
-    r"(\w+)\s*((?:\[\s*\w+\s*\])*)\s*(?:DAT_\w+\([^;]*\)\s*)*;"  # name, arrays
+    r"(\w+)\s*((?:\[[^\]]+\])*)\s*(?:DAT_\w+\([^;]*\)\s*)*;"  # name, arrays
 )
+
+
+def array_len(expr, name, field):
+    """Evaluate an array bound made of integer literals and + - *."""
+    if not re.fullmatch(r"[\s0-9a-fA-FxX+\-*()]+", expr):
+        sys.exit(f"{name}.{field}: unsupported array bound [{expr}]")
+    return eval(re.sub(r"\b0[xX]([0-9a-fA-F]+)\b", lambda m: str(int(m.group(1), 16)), expr), {}, {})
+
+
+def split_declarators(body):
+    """Turn `T a, b;` into `T a; T b;` (plain names only)."""
+    pattern = re.compile(r"((?:struct\s+|union\s+)?\w+)\s+(\w+(?:\s*,\s*\w+)+)\s*;")
+    return pattern.sub(lambda m: " ".join(f"{m.group(1)} {n.strip()};" for n in m.group(2).split(",")), body)
+
+
+def collapse_inline_structs(body):
+    """Turn `struct T { ... } field;` inside a body into `struct T field;`."""
+    while True:
+        match = re.search(r"((?:struct|union)\s+\w+)\s*\{", body)
+        if not match:
+            return split_declarators(body)
+        depth = 0
+        for index in range(match.end() - 1, len(body)):
+            depth += {"{": 1, "}": -1}.get(body[index], 0)
+            if depth == 0:
+                break
+        body = body[:match.start()] + match.group(1) + " " + body[index + 1:]
 
 
 def strip_comments(text):
@@ -69,13 +104,31 @@ def find_struct(sources, name):
     sys.exit(f"struct {name} not found")
 
 
+def rust_name(cname):
+    cname = cname.lstrip("_")
+    return cname[0].upper() + cname[1:].replace("_", "")
+
+
+def has_struct(sources, name):
+    pattern = re.compile(r"struct\s+" + re.escape(name) + r"\s*\{|\}\s*" + re.escape(name) + r"\s*;")
+    return any(pattern.search(text) for text in sources)
+
+
+def is_enum(sources, name):
+    pattern = re.compile(r"enum\s+" + re.escape(name) + r"\s*\{|typedef\s+enum\s+\w*\s*\{[^}]*\}\s*" + re.escape(name) + r"\s*;|typedef\s+enum\s+\w+\s+" + re.escape(name) + r"\s*;", re.S)
+    return any(pattern.search(text) for text in sources)
+
+
 def snake(name):
     name = name.lower()
     return name + "_" if name in KEYWORDS else name
 
 
+OVERRIDES = {}
+
+
 def generate(sources, name, rust_names, emitted, out):
-    body = strip_comments(find_struct(sources, name))
+    body = collapse_inline_structs(strip_comments(find_struct(sources, name)))
     fields, base = [], None
     for match in DECL.finditer(body):
         offset, ctype, stars, field, arrays = match.groups()
@@ -83,36 +136,55 @@ def generate(sources, name, rust_names, emitted, out):
             offset = int(offset, 16)
             base = offset if base is None else base
         ctype = re.sub(r"^(const|struct|union)\s+", "", ctype).strip()
-        counts = [int(n, 0) for n in re.findall(r"\[\s*(\w+)\s*\]", arrays)]
+        if (name, field.lower()) in OVERRIDES:
+            old = SCALARS.get(ctype, (None, None))
+            ctype = OVERRIDES.pop((name, field.lower()))
+            if stars or SIZES.get(old[0]) != SIZES.get(SCALARS[ctype][0]):
+                sys.exit(f"{name}.{field}: override must keep a scalar's size")
+        counts = [array_len(n, name, field) for n in re.findall(r"\[([^\]]+)\]", arrays)]
         if stars:
             rtype, align = "DatPtr", 4
         elif ctype in SCALARS:
             rtype, align = SCALARS[ctype]
-        elif ctype in rust_names:
+        elif is_enum(sources, ctype):
+            rtype, align = "i32", 4  # MWCC enums are 4 bytes (-enum int)
+        elif ctype in rust_names or has_struct(sources, ctype):
+            # Nested structs are generated on demand under a derived name.
+            rust_names.setdefault(ctype, rust_name(ctype))
             if ctype not in emitted:
                 generate(sources, ctype, rust_names, emitted, out)
             rtype, align = rust_names[ctype], emitted[ctype][1]
         else:
-            sys.exit(f"{name}.{field}: unsupported type {ctype}; name it on the command line")
+            sys.exit(f"{name}.{field}: unsupported type {ctype}")
         size = SIZES.get(rtype) or emitted[ctype][0]
         for count in reversed(counts):
             rtype, size = f"[{rtype}; {count}]", size * count
         fields.append([None if offset is None else offset - base, snake(field), rtype, size, align])
     if not fields:
         sys.exit(f"struct {name} has no fields")
+    # Lay out fields naturally, then compare with the decomp's annotations. A
+    # lone wrong annotation (a typo) is accepted with a warning when the next
+    # annotated field agrees with the computed layout; anything else fails.
     cursor, max_align = 0, 1
     for entry in fields:
-        offset, field, _, size, align = entry
+        align, size = entry[4], entry[3]
         cursor = (cursor + align - 1) // align * align
-        if offset is not None and cursor != offset:
-            # Trust the computed offset only when the field's own `xNNN` name agrees.
-            if not field.startswith(f"x{cursor:x}"):
-                sys.exit(f"{name}.{field}: annotation +{offset:#x} != computed +{cursor:#x}")
-            print(f"warning: {name}.{field} annotated +{offset:#x}, name and layout say +{cursor:#x}",
-                  file=sys.stderr)
-        entry[0] = cursor
+        entry.append(cursor)
         cursor += size
         max_align = max(max_align, align)
+    annotated = [entry for entry in fields if entry[0] is not None]
+    for index, entry in enumerate(annotated):
+        offset, field, computed = entry[0], entry[1], entry[5]
+        if offset == computed:
+            continue
+        following = annotated[index + 1] if index + 1 < len(annotated) else None
+        if following is None or following[0] != following[5]:
+            sys.exit(f"{name}.{field}: annotation +{offset:#x} != computed +{computed:#x}")
+        print(f"warning: {name}.{field} annotated +{offset:#x}; layout and the next "
+              f"annotation ({following[1]} at +{following[0]:#x}) give +{computed:#x}",
+              file=sys.stderr)
+    for entry in fields:
+        entry[0] = entry.pop()
     total = (cursor + max_align - 1) // max_align * max_align
     emitted[name] = (total, max_align)
     out.append(f"dat_struct! {{\n    /// `{name}` (decomp `src/melee`), {total:#x} bytes.\n")
@@ -126,17 +198,27 @@ def main():
     if "--" not in sys.argv:
         sys.exit(__doc__)
     split = sys.argv.index("--")
-    sources = [open(path).read() for path in sys.argv[1:split]]
+    sources = []
+    for path in sys.argv[1:split]:
+        paths = sorted(glob.glob(os.path.join(path, "**", "*.h"), recursive=True)) if os.path.isdir(path) else [path]
+        sources += [open(p, errors="replace").read() for p in paths]
     requested = []
     rust_names = {}
     for spec in sys.argv[split + 1:]:
+        if "." in spec:
+            target, _, ctype = spec.partition(":")
+            struct, _, field = target.partition(".")
+            OVERRIDES[(struct, field.lower())] = ctype
+            continue
         cname, _, rname = spec.partition("=")
-        rust_names[cname] = rname or cname[0].upper() + cname[1:].replace("_", "")
+        rust_names[cname] = rname or rust_name(cname)
         requested.append(cname)
     out, emitted = [], {}
     for cname in requested:
         if cname not in emitted:
             generate(sources, cname, rust_names, emitted, out)
+    if OVERRIDES:
+        sys.exit(f"unused overrides: {OVERRIDES}")
     sys.stdout.write("".join(out))
 
 
