@@ -14,3 +14,4 @@ __pycache__/
 /web/dist/
 /node_modules/
 .wrangler/
+.claude/worktrees/
