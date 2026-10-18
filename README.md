@@ -27,6 +27,21 @@ image and patched 20XX image match the full-disc checksums published with the pa
 The normal entry point is `~/Projects/20xx-rust`; files are stored on the external SSD.
 No remote repository or hosted service is configured.
 
+## Claude Remote Control
+
+The remote environment is named `20xx-rust` and runs in the detached tmux session
+`20xx-remote`, rooted in this repository. Open it from Claude Code on the web or
+the Claude mobile app. The tmux session survives terminal disconnects; the host
+and Claude process must remain running.
+
+```sh
+tmux attach -t 20xx-remote
+# If the session is no longer running:
+tmux new-session -d -s 20xx-remote -c "$HOME/Projects/20xx-rust" 'exec /opt/homebrew/bin/claude remote-control --name 20xx-rust --spawn=same-dir'
+```
+
+`CLAUDE.md` imports this repository's `AGENTS.md` and points to the current research state.
+
 ## Commands
 
 Rust is installed at `~/.cargo/bin`; the Makefile uses it directly. Add that
