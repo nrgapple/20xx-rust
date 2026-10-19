@@ -21,20 +21,36 @@ image and patched 20XX image match the full-disc checksums published with the pa
 
 ## Website
 
-The browser inspector is live at https://20xx-rust.champtoday.workers.dev.
-Open a Melee 1.02 or 20XX 5.0.2 ISO there. It is read locally in the browser
-and never uploaded. The page identifies the disc, shows every fighter's
-common and fighter-specific attributes, and runs the ported Fall physics in
-an interactive plot. It is not the playable game.
+**Public HTTPS:** https://20xx-rust.champtoday.workers.dev
 
-Sources are in `web/` and `crates/melee-web`. `make web` builds `web/dist`,
-`make serve` serves it at http://localhost:8787, and `make deploy` deploys it
-with Wrangler (`wrangler.jsonc`, Cloudflare Workers static assets).
+The public entrance opens directly to a full-window scene, with a compact menu
+for lobby invitations, view selection, camera reset, and fullscreen. There is
+no landing page, research navigation, numeric dashboard, or ROM upload.
+Original Fox, Mario, Marth, Captain Falcon, and Final Destination assets are
+converted by Rust and loaded from a prebuilt content pack.
+
+**This is still an incomplete port, not playable Melee.** Characters display
+static stored poses with simplified materials. Combat, complete match simulation,
+faithful rendering/audio, UCF 0.84, and rollback remain unfinished. Four-seat
+lobbies provide presence and invitation links; they do not run multiplayer combat.
+The Rust physics fixture and experiment protocol remain available for automated
+engine tests, but are not exposed in the player interface.
+
+The research inspector sources remain in `web/inspector.html` and `web/app.js`
+for developer use and are excluded from the public build.
+
+`npm ci` installs pinned tooling. `make web` builds the site; `make web-check`
+builds and tests it. `make serve` binds the local Worker to `0.0.0.0:8787` for
+host verification, not remote access. `make deploy` updates the existing public
+HTTPS site. No ROM or source archive is shipped.
 
 ### Deployment
 
-`.github/workflows/ci.yml` runs `make check` and builds the site for every
-push and pull request. Pushes to `main` then deploy to Cloudflare through the
+`.github/workflows/ci.yml` runs `make check`, builds the site, and tests the lobby service for every
+push to main and pull request. The `check` job is required before merging.
+Auto-merge is enabled, and ready pull requests from branches in this repository
+automatically opt in through `.github/workflows/auto-merge.yml`. External forks
+and drafts are not automatically opted in. Pushes to `main` then deploy to Cloudflare through the
 `production` GitHub environment. This needs:
 
 - repository variable `CLOUDFLARE_ACCOUNT_ID` (already set);
@@ -48,8 +64,12 @@ push and pull request. Pushes to `main` then deploy to Cloudflare through the
 - `crates/hsd-dat`: reader for HAL HSD `.dat` archives (relocations, symbols, big-endian fields).
 - `crates/ppc-asm`: partial Gekko disassembler for porting audits (floating-point ops in full).
 - `crates/melee`: the Rust port. Module layout mirrors the decomp.
-- `crates/melee-web`: WebAssembly exports used by the browser inspector.
-- `web`: the inspector's static page (HTML, CSS, JavaScript).
+- `crates/melee-web`: WebAssembly exports for the ROM-free preview and optional inspector.
+- `web`: the public lobby/preview and optional research inspector.
+- `server`: Cloudflare Worker and four-seat Durable Object rooms.
+- `tests`: ROM-free WASM, invitation protocol, and WebSocket integration tests.
+- `tools/scene-export`: offline Rust conversion of original HSD meshes and textures.
+- `tools/content-pack.py`: checksum-verified runtime graphics packaging (local or published pack).
 - `tools/gc-inspect`: CLI to inspect ISO/GCM images, list files, and extract the DOL or files.
 - `tools/dat-inspect`: validate every archive on a disc, or list one archive's symbols.
 - `tools/dol-inspect`: disassemble functions by decomp symbol; diff two DOLs by symbol.
@@ -62,7 +82,7 @@ push and pull request. Pushes to `main` then deploy to Cloudflare through the
 - `reference`: ignored checkouts of the 20XX source library and Melee decompilation.
 
 The normal entry point is `~/Projects/20xx-rust`; files are stored on the external SSD.
-The repository is hosted privately at https://github.com/nrgapple/20xx-rust.
+The public repository is hosted at https://github.com/nrgapple/20xx-rust.
 
 ## Claude Remote Control
 
@@ -118,3 +138,5 @@ Pinned upstream commits and locally computed download hashes are recorded in
 `research/acquisition.json`. The existing Melee decompilation provides a major
 reference for the base game; 20XX-specific assembly and runtime-loaded code still
 need analysis. A matching PowerPC rebuild and a native Rust port are separate goals.
+
+Graphics and animation details, measured coverage, and known limitations: [research/notes/graphics-and-animation.md](research/notes/graphics-and-animation.md).

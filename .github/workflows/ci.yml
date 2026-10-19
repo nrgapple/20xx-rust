@@ -18,12 +18,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
       # rust-toolchain.toml selects the pinned toolchain, components, and targets.
       - run: rustup toolchain install
       - uses: Swatinem/rust-cache@v2
       # Disc-data tests print a note and pass: no game images exist in CI.
       - run: make check
       - run: tools/build-web.sh
+      - run: npm test
       - uses: actions/upload-artifact@v7
         with:
           name: web
@@ -39,6 +45,11 @@ jobs:
       url: https://20xx-rust.champtoday.workers.dev
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
       - uses: actions/download-artifact@v8
         with:
           name: web
@@ -52,4 +63,4 @@ jobs:
             echo "::error::Set the CLOUDFLARE_API_TOKEN repository secret (see README, Deployment)."
             exit 1
           fi
-          npx -y wrangler@4 deploy
+          npm run deploy

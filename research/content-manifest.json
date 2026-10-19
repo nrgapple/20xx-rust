@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "assets": {
+    "fox": {
+      "metadata": "fox.0788809be5dd3d4e.json",
+      "metadata_sha256": "0788809be5dd3d4ee14ade035b2e37e1eedb78a32100512abefc479f5a395722",
+      "binary": "fox.7fc6b868f9637fcb.bin",
+      "binary_sha256": "7fc6b868f9637fcbc518c1e52f345bf18f27d6cb027e850ae0d31dd10c0a382a",
+      "source": "PlFxNr.dat",
+      "source_sha256": "f1ebe2af74d34be113614da3204730ea6d09b078ebf8a82d2a9036d58d8e4f8b"
+    },
+    "mario": {
+      "metadata": "mario.f843a7e54ed6d2aa.json",
+      "metadata_sha256": "f843a7e54ed6d2aa135ff96978f50d57d5433db56474026208af2222680304c8",
+      "binary": "mario.de58bb460dfec691.bin",
+      "binary_sha256": "de58bb460dfec69189cc5f865b06c1c877987d5e2f637b38adb0519d7556ab22",
+      "source": "PlMrNr.dat",
+      "source_sha256": "518df5b1d1ce6775a636f4ca8e8e62fb24be65013cd586451c21a181824903ae"
+    },
+    "marth": {
+      "metadata": "marth.7f6a09e5256ff93c.json",
+      "metadata_sha256": "7f6a09e5256ff93c05f92ca80333bc55988017eff9add09c138a0fbce98fd83d",
+      "binary": "marth.f8844ca3d3605c90.bin",
+      "binary_sha256": "f8844ca3d3605c905d414a1f6005e520d277e52cb29bba6cacaab012a6ce75b2",
+      "source": "PlMsNr.dat",
+      "source_sha256": "e4f2b635373f23510d81cdb395b9633501ca52135f7694eb9a31af7aebe38c72"
+    },
+    "falcon": {
+      "metadata": "falcon.d4a26f24ec6cf968.json",
+      "metadata_sha256": "d4a26f24ec6cf968418ae931b14758d20809df3a1ceab9b27587925202ae037e",
+      "binary": "falcon.bab7e6b7347a521f.bin",
+      "binary_sha256": "bab7e6b7347a521f758d8e729322dd12e6a80994b1fa694713779a559150c294",
+      "source": "PlCaNr.dat",
+      "source_sha256": "bdc91f7bde1da16ceefe332876c20b65b36ba2f30a1e94b59bb24a2f9fcfe163"
+    },
+    "final-destination": {
+      "metadata": "final-destination.1cbec0fabce1a0ff.json",
+      "metadata_sha256": "1cbec0fabce1a0ffd408a87b3381be26670f01792cbb2be0eba0e2f0220370aa",
+      "binary": "final-destination.4e09dfbafce22618.bin",
+      "binary_sha256": "4e09dfbafce226185e23573a50fc5d20ed720ece69f8a4bcd8d11bcaff10a1af",
+      "source": "GrNLa.dat",
+      "source_sha256": "2a295a733414fb65a7061a5c092144fb197570682562b87ba5567ff3f08abb02"
+    }
+  }
+}

@@ -2,6 +2,8 @@
 
 - Target Super Smash Bros. Melee 20XX Hack Pack 5.0.2, based on NTSC-U Melee 1.02 (GALE01, revision byte 2).
 - Product target: a browser website where friends play faithful Melee with low perceived input latency. Target Rust/WebAssembly and deterministic simulation with rollback; keep simulation independent of rendering, audio, browser APIs, and transport.
+- Player delivery (user, 2026-10-18): no ROM, ISO, original disc, emulator, or local extraction required to play. Friends open a website and share lobby/match links. Disc inputs are developer research only. Prebuilt runtime content must eventually cover the whole game; a ROM-free numeric fixture is only a preview.
+- Four-player scope (user, 2026-10-18): four simultaneous human players, original graphics and content, hand-ported Rust gameplay. Do not substitute a generic fighter prototype or label static model viewing as playable Smash.
 - Scope (user decision, 2026-10-18): tournament-style play first. All characters and stages, no items, online multiplayer. Other modes are not a current focus.
 - Approach (user decision, 2026-10-18): hand-port game logic to Rust from the matching decomp, function by function, citing each decomp symbol and 1.02 address. Do not recompile the decomp's C or emulate the DOL. Follow the porting rules in `crates/melee/src/lib.rs` and `research/porting-plan.md`; audit float code with `dol-inspect` before porting it.
 - Decisions (user, 2026-10-18, later): online play uses UCF 0.84 (Slippi's). No emulation, and no emulator code (Dolphin, Slippi Dolphin) in the product. Behavior is re-derived from the decomp, the original machine code, and documentation. Frame-level validation sources are the agent's choice; currently public Slippi replays.
@@ -11,4 +13,5 @@
 - Reference checkouts are research inputs. Read their instructions before editing them; do not silently modify upstream checkouts.
 - Start with binary inspection and a small, evidenced Rust subsystem. Do not claim that an emulator launch or scaffolding is a native Rust port.
 - Run `make check` after Rust changes. Build outputs and downloads stay on the external SSD.
+- Delivery (user, 2026-10-18): public GitHub repository; merge work into main with auto-merge after required checks pass. The public website opens directly to the game surface, with only in-game controls; keep research tools and explanatory documentation out of the published player UI. Do not claim the unfinished engine is playable.
 - No Mistakes is disabled by workspace instructions. Use normal review and relevant checks.

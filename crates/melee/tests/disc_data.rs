@@ -149,6 +149,10 @@ fn vanilla_archive(path: &str) -> Option<Archive> {
         return None;
     };
     let disc = Disc::read(&mut file).expect("readable disc");
+    if disc.find_file(&mut file, "AI_Engine.bin").is_ok() {
+        eprintln!("skipping: {} is a 20XX disc, not vanilla", iso.display());
+        return None;
+    }
     let bytes = disc.read_file(&mut file, path).expect("file on disc");
     Some(Archive::parse(&bytes).expect("valid archive"))
 }

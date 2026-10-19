@@ -2,78 +2,39 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>20XX Rust — engine inspector</title>
-  <meta name="description" content="A Rust port of Melee 1.02 game logic, running in your browser against your own disc.">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#090b13">
+  <title>20XX</title>
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="style.css">
-  <script type="module" src="app.js"></script>
+  <link rel="stylesheet" href="game.css">
+  <script type="module" src="lobby.js"></script>
+  <script type="module" src="scene.js"></script>
 </head>
 <body>
-  <header>
-    <h1>20XX Rust <span class="tag">engine inspector</span></h1>
-    <p class="lede">
-      Melee 1.02 game logic, hand-ported to Rust and running here as WebAssembly.
-      This is <strong>not the playable game yet</strong>: it loads data from your own disc
-      and runs the parts of the engine that are ported so far.
-    </p>
-  </header>
-
-  <main>
-    <section id="disc">
-      <h2><span class="step">1</span> Open your disc</h2>
-      <p>
-        Choose a Super Smash Bros. Melee NTSC 1.02 ISO (vanilla or 20XX 5.0.2).
-        It is read locally with <code>File.slice</code>: nothing is uploaded.
-      </p>
-      <label class="file">
-        <input id="iso" type="file" accept=".iso,.gcm">
-        <span>Choose ISO…</span>
-      </label>
-      <div id="disc-info" class="info" hidden></div>
-      <p id="disc-error" class="error" hidden></p>
-    </section>
-
-    <section id="fighter" hidden>
-      <h2><span class="step">2</span> Fighter data</h2>
-      <p>Attributes from the fighter's <code>Pl??.dat</code>, read with exactly the bits on your disc.</p>
-      <select id="fighter-select"></select>
-      <div id="highlights" class="cards"></div>
-      <details>
-        <summary>All <code>ftCo_DatAttrs</code> fields</summary>
-        <table id="attrs"><tbody></tbody></table>
-      </details>
-      <details id="special-details">
-        <summary>Fighter-specific attributes (<code>ftData::ext_attr</code>)</summary>
-        <table id="special"><tbody></tbody></table>
-      </details>
-    </section>
-
-    <section id="lab" hidden>
-      <h2><span class="step">3</span> Air physics lab</h2>
-      <p>
-        The ported Fall physics (<code>ft_80084DB0</code>: fast-fall check, gravity, air drift),
-        integrated like <code>Fighter_procUpdate</code> with no knockback or wind. Starts at rest in the air.
-        Input timers are simulated until <code>Fighter_procInput</code> is ported.
-      </p>
-      <div class="controls">
-        <label>Stick X <input id="stick" type="range" min="-1" max="1" step="0.0125" value="1"><output id="stick-out">1.00</output></label>
-        <label>Fast-fall flick on frame <input id="flick" type="number" min="-1" max="119" value="20"> <small>(−1: never)</small></label>
-        <label>Frames <input id="frames" type="number" min="10" max="600" value="60"></label>
-        <button id="pin" type="button">Pin for comparison</button>
-        <button id="clear" type="button" class="quiet">Clear pins</button>
-      </div>
-      <canvas id="plot" width="960" height="420" aria-label="Fall trajectory plot"></canvas>
-      <p id="readout" class="readout"></p>
-    </section>
+  <main id="game">
+    <canvas id="scene" tabindex="0" aria-label="Melee stage and characters. Drag or use arrow keys to rotate the camera."></canvas>
+    <div id="loading" role="status">Loading…</div>
+    <p id="scene-status" class="sr-only" role="status"></p>
+    <button id="menu-toggle" class="icon-button" aria-label="Open menu" aria-haspopup="dialog" aria-controls="menu">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
+    <dialog id="menu" aria-labelledby="menu-title">
+      <div class="menu-heading"><h1 id="menu-title">20XX</h1><button id="menu-close" class="icon-button" aria-label="Close menu">×</button></div>
+      <div id="seats" aria-label="Lobby seats"></div>
+      <p id="room-status" role="status">Offline</p>
+      <button id="create">Create lobby</button>
+      <button id="join" hidden>Join lobby</button>
+      <button id="copy-room" hidden>Copy invite</button>
+      <input id="invite" aria-label="Lobby invitation link" readonly hidden>
+      <button id="leave" class="quiet" hidden>Leave lobby</button>
+      <p id="feedback" role="status" hidden></p>
+      <hr>
+      <label for="scene-view">View</label>
+      <select id="scene-view" disabled><option value="stage">Final Destination</option><option value="fox">Fox</option><option value="mario">Mario</option><option value="marth">Marth</option><option value="falcon">Captain Falcon</option></select>
+      <button id="scene-reset" class="quiet" disabled>Reset camera</button>
+      <button id="fullscreen" class="quiet">Fullscreen</button>
+      <p id="error" role="alert" hidden></p>
+    </dialog>
   </main>
-
-  <footer>
-    <p>
-      Source: a hand port of the <a href="https://github.com/doldecomp/melee">Melee decompilation</a>.
-      No game data is hosted here; everything comes from the disc you open.
-      Super Smash Bros. Melee is © Nintendo / HAL Laboratory.
-    </p>
-  </footer>
 </body>
 </html>

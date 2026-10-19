@@ -15,3 +15,7 @@ __pycache__/
 /node_modules/
 .wrangler/
 .claude/worktrees/
+
+/artifacts/screenshots/
+
+/generated/

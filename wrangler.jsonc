@@ -1,8 +1,15 @@
 {
-  // Static site for the browser inspector. Build first: tools/build-web.sh
   "name": "20xx-rust",
+  "main": "server/worker.js",
   "compatibility_date": "2026-10-01",
   "assets": {
-    "directory": "./web/dist"
-  }
+    "directory": "./web/dist",
+    "binding": "ASSETS",
+    "not_found_handling": "none",
+    "run_worker_first": ["/api/*"]
+  },
+  "durable_objects": {
+    "bindings": [{ "name": "ROOMS", "class_name": "Room" }]
+  },
+  "migrations": [{ "tag": "v1-rooms", "new_sqlite_classes": ["Room"] }]
 }
