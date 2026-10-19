@@ -1,10 +1,15 @@
-//! Port of `src/melee/mp/mplib.c` (stage collision geometry).
+//! Port of `src/melee/mp/mplib.c` (stage collision geometry): loading and
+//! line links. Queries are in [`super::query`], segment checks in
+//! [`super::check`], and joint (moving-platform) bookkeeping in
+//! [`super::joint`].
 //!
 //! The game keeps this state in file-level globals (`groundCollVtx`,
-//! `groundCollLine`, `groundCollJoint`, `mpLib_80458868`, ...); here it is
-//! one [`MpLib`] value owned by the simulation. Audited with `dol-inspect`:
-//! no fused multiply-adds in the functions below.
+//! `groundCollLine`, `groundCollJoint`, `jointListStart`, `didCheckBounding`,
+//! `mpLib_80458868`, ...); here it is one [`MpLib`] value owned by the
+//! simulation. Audited with `dol-inspect`: no fused multiply-adds in the
+//! functions below.
 
+use super::data::MapLine;
 use super::{line_flag, line_group, MapColl};
 use crate::math::Vec2;
 
@@ -25,9 +30,13 @@ pub struct CollLine {
     pub flags: u32,
 }
 
-/// `CollJoint` (callbacks and `jobj` are not ported yet).
+/// `CollJoint`. Its `inner` is always `coll_data.joints[i]` for joint `i`,
+/// so it is implicit. `next` links the enabled-joint list that starts at
+/// [`MpLib::joint_list_start`]. Not ported yet: `jobj` and the two
+/// ground callbacks (`cb_0`/`cb_data_0`, `cb_1`/`cb_data_1`).
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct CollJoint {
+    pub next: Option<usize>,
     pub flags: u32,
     pub xc: i16,
     pub xe: bool,
@@ -36,7 +45,18 @@ pub struct CollJoint {
 }
 
 /// `CollJoint_Enabled` (`mp/forward.h`).
-pub const COLL_JOINT_ENABLED: u32 = 1 << 16;
+pub const COLL_JOINT_ENABLED: u32 = coll_joint::ENABLED;
+
+/// `enum CollJointFlags` (`mp/forward.h`).
+pub mod coll_joint {
+    pub const B8: u32 = 1 << 8;
+    pub const B9: u32 = 1 << 9;
+    pub const B10: u32 = 1 << 10;
+    pub const B11: u32 = 1 << 11;
+    pub const TOO_FAR: u32 = 1 << 12;
+    pub const ENABLED: u32 = 1 << 16;
+    pub const HIDDEN: u32 = 1 << 18;
+}
 
 /// `mpCollisionBox`.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
@@ -56,11 +76,20 @@ pub struct MpLib {
     pub vtx: Vec<CollVtx>,
     /// `groundCollLine`
     pub lines: Vec<CollLine>,
-    /// `groundCollJoint`; the game links them in order
-    /// (`jointListStart`..`jointListEnd`).
+    /// `groundCollJoint`
     pub joints: Vec<CollJoint>,
+    /// `jointListStart`: first joint of the list the segment checks walk.
+    pub joint_list_start: Option<usize>,
+    /// `jointListEnd`
+    pub joint_list_end: Option<usize>,
+    /// `didCheckBounding`
+    pub did_check_bounding: bool,
     /// `mpLib_80458868[0]`
     pub bounds: MpCollisionBox,
+    /// `mpLib_80458868[1]`: the enabled floors' extent, recomputed by
+    /// `mpLib_80058614_Floor` ([`MpLib::update_floor_bounds`]). The game
+    /// initializes it in `mpLib_80058820` (not ported), not in `mpLibLoad`.
+    pub floor_bounds: MpCollisionBox,
 }
 
 /// `mpPruneEmptyLines` (0x8004D184): unlink zero-length lines. The game skips
@@ -107,14 +136,18 @@ pub fn prune_empty_lines(coll: &mut MapColl, skip: bool) {
 impl MpLib {
     /// `mpLibLoad` (0x8004D288), with `scale` from `Ground_801C0498`.
     ///
-    /// Not yet ported: `grDynamicAttr_801CA0B4`, island setup
-    /// (`mpIsland_8005A728`), and `mpUncheckBounding`.
+    /// Joints are enabled and linked in index order, then
+    /// `mpUncheckBounding` runs, as in the game. Not yet ported:
+    /// `grDynamicAttr_801CA0B4` and island setup (`mpIsland_8005A728`).
     pub fn load(mut coll_data: MapColl, scale: f32, skip_prune: bool) -> Self {
+        let joint_count = coll_data.joints.len();
         let joints = coll_data
             .joints
             .iter()
-            .map(|joint| CollJoint {
-                flags: COLL_JOINT_ENABLED,
+            .enumerate()
+            .map(|(i, joint)| CollJoint {
+                next: (i + 1 < joint_count).then_some(i + 1),
+                flags: coll_joint::ENABLED,
                 xc: 0,
                 xe: true,
                 bounding_min: Vec2::new(scale * joint.left_bound, scale * joint.bottom_bound),
@@ -174,18 +207,39 @@ impl MpLib {
                 }
             })
             .collect();
-        Self {
+        let mut mp = Self {
             coll_data,
             vtx,
             lines,
             joints,
+            joint_list_start: (joint_count > 0).then_some(0),
+            joint_list_end: joint_count.checked_sub(1),
+            did_check_bounding: false,
             bounds,
-        }
+            floor_bounds: MpCollisionBox::default(),
+        };
+        mp.uncheck_bounding();
+        mp
     }
 
-    fn inner(&self, line_id: usize) -> &super::data::MapLine {
+    /// `groundCollLine[line_id].inner`.
+    pub(super) fn inner(&self, line_id: usize) -> &MapLine {
         let inner = self.lines[line_id].inner.expect("line in a line group");
         &self.coll_data.lines[inner]
+    }
+
+    pub(super) fn inner_mut(&mut self, line_id: usize) -> &mut MapLine {
+        let inner = self.lines[line_id].inner.expect("line in a line group");
+        &mut self.coll_data.lines[inner]
+    }
+
+    /// The C `LINEID_CHECK` macro: `HSD_ASSERTREPORT` (a halt) when
+    /// `line_id` is -1 or at least `line_count`. Returns the index.
+    pub(super) fn line_id_check(&self, line_id: i32) -> usize {
+        if line_id == -1 || line_id >= self.coll_data.lines.len() as i32 {
+            panic!("mplib.c: not found lineID={line_id}");
+        }
+        line_id as usize
     }
 
     fn connects(&self, line: i16) -> bool {
@@ -224,12 +278,41 @@ impl MpLib {
         }
         i32::from(inner.prev_id0)
     }
+
+    /// Joint indices in list order (`for (joint = jointListStart; joint;
+    /// joint = joint->next)`).
+    pub fn joint_list(&self) -> impl Iterator<Item = usize> + '_ {
+        std::iter::successors(self.joint_list_start, |&joint| self.joints[joint].next)
+    }
+
+    /// The lines a segment check visits for one joint: the joint's `group`
+    /// range, then its dynamic range. The checks reach the dynamic range
+    /// with a `goto` into the loop body that skips the first `i < count`
+    /// test, so a nonzero dynamic count always visits at least one line.
+    pub(super) fn joint_group_lines(
+        &self,
+        joint: usize,
+        group: usize,
+    ) -> impl Iterator<Item = usize> {
+        let ranges = self.coll_data.joints[joint].ranges;
+        let main = ranges[group];
+        let dynamic = ranges[line_group::DYNAMIC];
+        let dynamic_count = match dynamic.count {
+            0 => 0,
+            count => i32::from(count).max(1),
+        };
+        let start = i32::from(main.start);
+        let dynamic_start = i32::from(dynamic.start);
+        (0..i32::from(main.count))
+            .map(move |i| (start + i) as usize)
+            .chain((0..dynamic_count).map(move |i| (dynamic_start + i) as usize))
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::mp::data::{MapLine, MapLineRange};
+    use crate::mp::data::{MapJoint, MapLine, MapLineRange};
 
     fn line(v0: u16, v1: u16, prev: i16, next: i16) -> MapLine {
         MapLine {
@@ -286,5 +369,34 @@ mod tests {
         // mpLibLoad's inverted initial bounds never tighten (see `load`).
         assert_eq!(mp.bounds.top, f32::MAX);
         assert_eq!(mp.bounds.left, -f32::MAX);
+    }
+
+    #[test]
+    fn load_links_joints_in_order() {
+        let mut coll = chain();
+        coll.joints = vec![MapJoint::default(); 3];
+        let mp = MpLib::load(coll, 1.0, false);
+        assert_eq!(mp.joint_list().collect::<Vec<_>>(), [0, 1, 2]);
+        assert_eq!((mp.joint_list_start, mp.joint_list_end), (Some(0), Some(2)));
+        assert!(mp
+            .joints
+            .iter()
+            .all(|j| j.flags == coll_joint::ENABLED && j.xe));
+        assert!(!mp.did_check_bounding);
+    }
+
+    #[test]
+    fn dynamic_range_visits_at_least_one_line() {
+        let mut coll = chain();
+        let mut joint = MapJoint::default();
+        joint.ranges[line_group::FLOOR] = MapLineRange { start: 0, count: 2 };
+        joint.ranges[line_group::DYNAMIC] = MapLineRange {
+            start: 2,
+            count: -3,
+        };
+        coll.joints = vec![joint];
+        let mp = MpLib::load(coll, 1.0, false);
+        let lines: Vec<_> = mp.joint_group_lines(0, line_group::FLOOR).collect();
+        assert_eq!(lines, [0, 1, 2]);
     }
 }

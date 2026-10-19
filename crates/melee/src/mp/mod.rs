@@ -1,7 +1,12 @@
 //! Ports from `src/melee/mp` (map collision).
 
+pub mod check;
 pub mod data;
+pub mod geom;
+pub mod joint;
 pub mod lib;
+pub mod psvec;
+pub mod query;
 
 use crate::dat::DatField;
 use crate::math::Vec2;
