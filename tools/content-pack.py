@@ -24,7 +24,7 @@ def digest(data):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--record', action='store_true')
-    parser.add_argument('--source', type=pathlib.Path, default=ROOT / 'generated/content-v1')
+    parser.add_argument('--source', type=pathlib.Path, default=ROOT / 'generated/content-v2')
     parser.add_argument('--dest', type=pathlib.Path, default=ROOT / 'web/dist/content')
     args = parser.parse_args()
     if args.record:

@@ -14,12 +14,23 @@ const IDENTITY: Matrix = [[1., 0., 0., 0.], [0., 1., 0., 0.], [0., 0., 1., 0.]];
 #[derive(Clone)]
 struct Joint {
     flags: u32,
+    index: usize,
     world: Matrix,
     inverse: Option<Matrix>,
     display: Option<u32>,
 }
+#[derive(Clone, Copy)]
+pub struct Vertex {
+    pub display: [f32; 8],
+    pub animated: [f32; 16],
+}
+#[derive(Clone)]
+struct Binding {
+    matrix: Matrix,
+    weights: [f32; 8],
+}
 pub struct Mesh {
-    pub vertices: Vec<[f32; 8]>,
+    pub vertices: Vec<Vertex>,
     pub color: [f32; 4],
     pub texture: Option<usize>,
     pub joint: u32,
@@ -29,6 +40,7 @@ pub struct Scene {
     pub meshes: Vec<Mesh>,
     pub textures: Vec<texture::Texture>,
     pub joints: usize,
+    pub skeleton: Vec<serde_json::Value>,
     pub warnings: BTreeSet<String>,
 }
 fn vector(a: &Archive, p: u32) -> Result<[f64; 3]> {
@@ -91,11 +103,12 @@ fn srt(
 fn read_joints(
     a: &Archive,
     start: u32,
-    parent: Matrix,
-    parent_scale: [f64; 3],
+    parent: (Matrix, [f64; 3], Option<usize>),
     joints: &mut BTreeMap<u32, Joint>,
     depth: usize,
+    skeleton: &mut Vec<serde_json::Value>,
 ) -> Result<()> {
+    let (parent, parent_scale, parent_index) = parent;
     ensure(depth < 256 && joints.len() < 4096, "joint tree limit")?;
     let mut next = Some(start);
     while let Some(p) = next {
@@ -128,10 +141,14 @@ fn read_joints(
         } else {
             None
         };
+        let index = skeleton.len();
+        skeleton.push(serde_json::json!({"offset":p,"parent":parent_index,"flags":flags,
+            "rotation":vector(a,p+0x14)?,"scale":scale,"translation":vector(a,p+0x2c)?,"inverse":inverse.unwrap_or(IDENTITY)}));
         joints.insert(
             p,
             Joint {
                 flags,
+                index,
                 world,
                 inverse,
                 display,
@@ -143,7 +160,14 @@ fn read_joints(
             std::array::from_fn(|i| parent_scale[i] * scale[i])
         };
         if let Some(child) = a.ptr(p + 8)? {
-            read_joints(a, child, world, inherited, joints, depth + 1)?;
+            read_joints(
+                a,
+                child,
+                (world, inherited, Some(index)),
+                joints,
+                depth + 1,
+                skeleton,
+            )?;
         }
         next = a.ptr(p + 12)?;
     }
@@ -275,8 +299,8 @@ fn vertex(
     a: &Archive,
     attributes: &[Attr],
     data: &mut &[u8],
-    matrices: &[Matrix],
-) -> Result<[f32; 8]> {
+    matrices: &[Binding],
+) -> Result<Vertex> {
     let mut pos = [0.; 3];
     let mut normal = [0., 0., 1.];
     let mut uv = [0.; 2];
@@ -328,21 +352,30 @@ fn vertex(
             _ => {}
         }
     }
-    let m = *matrices.get(slot).ok_or("matrix index out of bounds")?;
+    let binding = matrices.get(slot).ok_or("matrix index out of bounds")?;
+    let m = binding.matrix;
     let p = transform(m, pos, true);
     let n = transform(m, normal, false);
-    Ok([
-        p[0],
-        p[1],
-        p[2],
-        n[0],
-        n[1],
-        n[2],
-        uv[0] as f32,
-        uv[1] as f32,
-    ])
+    let mut animated = [0.; 16];
+    animated[..3].copy_from_slice(&pos.map(|v| v as f32));
+    animated[3..6].copy_from_slice(&normal.map(|v| v as f32));
+    animated[6..8].copy_from_slice(&uv.map(|v| v as f32));
+    animated[8..].copy_from_slice(&binding.weights);
+    Ok(Vertex {
+        display: [
+            p[0],
+            p[1],
+            p[2],
+            n[0],
+            n[1],
+            n[2],
+            uv[0] as f32,
+            uv[1] as f32,
+        ],
+        animated,
+    })
 }
-fn triangles(a: &Archive, p: u32, matrices: &[Matrix]) -> Result<Vec<[f32; 8]>> {
+fn triangles(a: &Archive, p: u32, matrices: &[Binding]) -> Result<Vec<Vertex>> {
     let attributes = attrs(a, a.non_null_ptr(p + 8)?)?;
     ensure(
         attributes.iter().any(|v| v.kind == 9 && v.mode != 0),
@@ -405,12 +438,16 @@ fn matrices(
     p: u32,
     joint: &Joint,
     joints: &BTreeMap<u32, Joint>,
-) -> Result<Vec<Matrix>> {
+) -> Result<Vec<Binding>> {
     let mode = a.u16(p + 12)? & 0x3000;
     if mode == 0 {
-        let mut m = vec![joint.world];
+        let rigid = |j: &Joint| Binding {
+            matrix: j.world,
+            weights: [(j.index * 2) as f32, 0., 0., 0., 1., 0., 0., 0.],
+        };
+        let mut m = vec![rigid(joint)];
         if let Some(other) = a.ptr(p + 20)? {
-            m.push(joints.get(&other).ok_or("shared joint missing")?.world);
+            m.push(rigid(joints.get(&other).ok_or("shared joint missing")?));
         }
         return Ok(m);
     }
@@ -423,18 +460,23 @@ fn matrices(
         };
         let mut m = [[0.; 4]; 3];
         let mut total = 0.;
+        let mut weights = [0.; 8];
         let mut terminated = false;
         for i in 0..64 {
             let Some(j) = a.ptr(envelope + i * 8)? else {
                 terminated = true;
                 break;
             };
+            ensure(i < 4, "more than four envelope influences")?;
             let j = joints.get(&j).ok_or("envelope joint missing")?;
             let w = f64::from(a.f32(envelope + i * 8 + 4)?);
             ensure(w.is_finite() && (0.0..=1.0).contains(&w), "envelope weight")?;
             // Single-weight envelopes use joint-local coordinates; blended ones
             // use the bind-space inverse, matching SetupEnvelopeModelMtx.
-            let jm = if i == 0 && w >= 1.0 - f64::from(f32::EPSILON) {
+            let direct = i == 0 && w >= 1.0 - f64::from(f32::EPSILON);
+            weights[i as usize] = (j.index * 2 + usize::from(!direct)) as f32;
+            weights[i as usize + 4] = w as f32;
+            let jm = if direct {
                 j.world
             } else {
                 concat(j.world, j.inverse.ok_or("missing inverse bind matrix")?)
@@ -447,7 +489,7 @@ fn matrices(
             total += w;
         }
         ensure(terminated && (total - 1.).abs() < 0.001, "invalid envelope")?;
-        result.push(m);
+        result.push(Binding { matrix: m, weights });
     }
     ensure(!result.is_empty(), "empty matrix palette")?;
     Ok(result)
@@ -458,12 +500,20 @@ pub fn load(a: &Archive, roots: &[u32]) -> Result<Scene> {
         meshes: Vec::new(),
         textures: Vec::new(),
         joints: 0,
+        skeleton: Vec::new(),
         warnings: BTreeSet::new(),
     };
     let mut texture_ids = BTreeMap::new();
     for (root_index, root) in roots.iter().enumerate() {
         let mut joints = BTreeMap::new();
-        read_joints(a, *root, IDENTITY, [1.; 3], &mut joints, 0)?;
+        read_joints(
+            a,
+            *root,
+            (IDENTITY, [1.; 3], None),
+            &mut joints,
+            0,
+            &mut scene.skeleton,
+        )?;
         scene.joints += joints.len();
         for (&joint_offset, joint) in &joints {
             if joint.flags & (1 << 4) != 0 {

@@ -115,6 +115,8 @@ dependencies = [
  "gc-disc",
  "hsd-dat",
  "melee",
+ "serde_json",
+ "sha2",
 ]
 
 [[package]]
@@ -151,6 +153,7 @@ version = "0.1.0"
 dependencies = [
  "gc-disc",
  "hsd-dat",
+ "melee",
  "serde_json",
  "sha2",
 ]

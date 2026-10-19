@@ -216,7 +216,10 @@ impl Track {
         }
         Ok(self.set_state(if self.state() == 1 { 3 } else { 4 }))
     }
-    fn update(&mut self, output: &mut Vec<f32>) {
+    fn update(&mut self, output: &mut Vec<f32>, enabled: bool) {
+        if !enabled {
+            return;
+        }
         let value = match self.interpolation {
             6 => {
                 if self.flags & 0x80 == 0 {
@@ -268,6 +271,10 @@ impl Track {
     /// KEY tracks may emit multiple events in one frame; do not keep only last.
     /// `HSD_FObjInterpretAnim` 0x8036B030.
     pub fn advance(&mut self, rate: f32) -> Result<Vec<f32>> {
+        self.advance_with_callback(rate, true)
+    }
+    /// A NULL original callback also suppresses interpolation-state mutations.
+    pub fn advance_with_callback(&mut self, rate: f32, enabled: bool) -> Result<Vec<f32>> {
         if !rate.is_finite() {
             return Err(Error::InvalidTime);
         }
@@ -286,13 +293,13 @@ impl Track {
                 6 => {
                     self.time += term;
                     self.launch_key();
-                    self.update(&mut output);
+                    self.update(&mut output, enabled);
                     return Ok(output);
                 }
                 1 | 2 => state = self.load_data()?,
                 3 => {
                     if self.flags & 0x80 != 0 {
-                        self.update(&mut output);
+                        self.update(&mut output, enabled);
                     }
                     if self.cursor >= self.data.len() {
                         state = 6;
@@ -308,7 +315,7 @@ impl Track {
                         self.time -= f32::from(self.term);
                         state = self.set_state(3);
                     } else {
-                        self.update(&mut output);
+                        self.update(&mut output, enabled);
                         self.set_state(5);
                         return Ok(output);
                     }

@@ -9,3 +9,4 @@ gc-disc = { path = "../../crates/gc-disc" }
 hsd-dat = { path = "../../crates/hsd-dat" }
 serde_json = "1"
 sha2 = "0.10"
+melee = { path = "../../crates/melee" }

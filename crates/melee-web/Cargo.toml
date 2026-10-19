@@ -11,3 +11,7 @@ crate-type = ["cdylib", "rlib"]
 gc-disc = { path = "../gc-disc" }
 hsd-dat = { path = "../hsd-dat" }
 melee = { path = "../melee" }
+serde_json = "1"
+
+[dev-dependencies]
+sha2 = "0.10"

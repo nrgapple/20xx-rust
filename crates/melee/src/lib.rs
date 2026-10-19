@@ -16,7 +16,7 @@
 //! - Research tools may inspect local disc images. The player-facing runtime
 //!   must use versioned, prebuilt content and must not require a disc image.
 //!   Original archives and assets stay out of Git; the current browser preview
-//!   uses only a small numeric movement fixture, not a full content pack.
+//!   uses a partial original-content animation pack, not a complete game.
 
 pub mod dat;
 pub mod ft;

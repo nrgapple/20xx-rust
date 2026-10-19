@@ -954,3 +954,40 @@ fn psmtx_matches_dol() {
         (!same_mtx(&expected, &actual)).then(|| "  C_MTXLookAt".to_string())
     });
 }
+
+#[test]
+fn hsd_euler_transform_matches_dol() {
+    let Some(mut o) = Oracle::new() else { return };
+    let mut rng = Rng::new(0x8037a250);
+    for i in 0..512 {
+        let s = rng.vec3(true);
+        let r = rng.vec3(true);
+        let t = rng.vec3(true);
+        let parent = Vec3::new(rng.range(0.1, 3.), rng.range(0.1, 3.), rng.range(0.1, 3.));
+        o.reset();
+        let sp = o.put_vec(1, &s);
+        let rp = o.put_vec(2, &r);
+        let tp = o.put_vec(3, &t);
+        let pp = if i % 2 == 0 { o.put_vec(4, &parent) } else { 0 };
+        o.cpu.gpr[3] = SCRATCH;
+        o.cpu.gpr[4] = sp;
+        o.cpu.gpr[5] = rp;
+        o.cpu.gpr[6] = tp;
+        o.cpu.gpr[7] = pp;
+        assert!(o.call(0x8037a250));
+        let expected = o.get_mtx(SCRATCH);
+        let actual = melee::hsd::mtx::srt(
+            [s.x, s.y, s.z],
+            [r.x, r.y, r.z],
+            [t.x, t.y, t.z],
+            (pp != 0).then_some([parent.x, parent.y, parent.z]),
+        );
+        for (a, b) in actual.iter().flatten().zip(expected.iter().flatten()) {
+            assert_eq!(
+                a.to_bits(),
+                b.to_bits(),
+                "case {i}: {actual:?} != {expected:?}"
+            );
+        }
+    }
+}
