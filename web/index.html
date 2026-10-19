@@ -2,74 +2,39 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>20XX Rust — friend lobbies</title>
-  <meta name="description" content="A browser-native Melee port in development. Open the physics preview and share a friend lobby. No ROM needed for the preview.">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#090b13">
+  <title>20XX</title>
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="game.css">
   <script type="module" src="lobby.js"></script>
   <script type="module" src="scene.js"></script>
 </head>
 <body>
-  <header>
-    <nav><a class="brand" href="/">20XX / RUST</a><a href="inspector.html">Research inspector ↗</a></nav>
-    <p class="eyebrow">BROWSER-NATIVE MELEE · IN DEVELOPMENT</p>
-    <h1>One link.<br>Your next rivalry.</h1>
-    <p class="lede">The goal: faithful Melee, online with friends, with no ROM to find or upload.</p>
-    <p class="notice"><strong>Engine preview, not a playable match yet.</strong> Inspect the original fighter models and stage, then invite up to three friends to test the lobby. Combat is not implemented yet.</p>
-  </header>
-  <main>
-    <section class="scene-panel" aria-labelledby="scene-heading">
-      <div class="scene-title"><div><p class="eyebrow">ORIGINAL ASSET PIPELINE</p><h2 id="scene-heading">Four fighters. The original stage.</h2></div><span class="tag">Static model viewer</span></div>
-      <canvas id="scene" width="1200" height="640" tabindex="0" aria-label="Original Melee models: Fox, Mario, Marth, and Captain Falcon on Final Destination. Drag or use arrow keys to orbit."></canvas>
-      <div class="controls scene-controls">
-        <label>View <select id="scene-view" disabled><option value="stage">Four fighters / Final Destination</option><option value="fox">Fox</option><option value="mario">Mario</option><option value="marth">Marth</option><option value="falcon">Captain Falcon</option></select></label>
-        <button id="scene-reset" class="quiet" disabled>Reset camera</button>
-        <span class="fine">Drag to orbit · scroll to zoom · arrow keys also work</span>
-      </div>
-      <p id="scene-status" class="fine" role="status">Loading converted original models and textures…</p>
-      <p class="fine">These are the original model assets, in their stored poses. This is not a playable match or a finished reproduction of the game's rendering.</p>
-    </section>
-    <section aria-labelledby="room-heading">
-      <h2 id="room-heading">Bring a friend</h2>
-      <p>Four seats. Anyone with the invitation can join. All connected players can ready up to run the same set of physics experiments.</p>
-      <div class="controls">
-        <button id="create">Create a lobby</button>
-        <button id="join" hidden>Join this lobby</button>
-        <button id="copy-room" class="quiet" hidden>Copy invite link</button>
-        <button id="leave" class="quiet" hidden>Leave</button>
-      </div>
-      <input id="invite" class="link-field" aria-label="Lobby invitation link" readonly hidden>
-      <p id="room-status" role="status">No lobby joined.</p>
-      <div id="seats" class="cards"></div>
-      <button id="ready" disabled>Ready for physics test</button>
-      <p class="fine">Lobbies test presence and shared inputs. Matchmaking, combat, rollback, and playable rounds are still being built.</p>
-    </section>
-    <section aria-labelledby="lab-heading">
-      <h2 id="lab-heading">Feel the first piece</h2>
-      <p>Air drift, gravity, and fast fall run in Rust / WebAssembly using a small numeric test fixture. This physics test needs no disc or full-game content.</p>
-      <div class="controls">
-        <label>Stick X <input id="stick" type="range" min="-1" max="1" step="0.0125" value="1"><output id="stick-out">1.00</output></label>
-        <label>Fast-fall frame <input id="flick" type="number" min="-1" max="599" value="20"></label>
-        <label>Frames <input id="frames" type="number" min="10" max="600" value="60"></label>
-      </div>
-      <p class="fine">Fast-fall frame −1 means never. Both runs start at rest in the air; there is no floor or combat.</p>
-      <canvas id="plot" width="960" height="380" aria-label="Air physics trajectories; numeric results below"></canvas>
-      <p id="readout" class="readout" role="status">Loading the Rust engine…</p>
-      <button id="copy-trial" class="quiet" disabled>Copy experiment link</button>
-      <input id="experiment" class="link-field" aria-label="Shared experiment link" readonly hidden>
-      <p id="feedback" role="status"></p>
-      <p id="error" class="error" role="alert" hidden></p>
-    </section>
-    <section>
-      <h2>The route to a real match</h2>
-      <div class="milestones">
-        <div><b>01 / Running now</b><p>Rust input and movement ports, a ROM-free physics preview, and four-person lobbies.</p></div>
-        <div><b>02 / Engine work</b><p>Animation, stage collisions, action states, hit detection, and a complete four-fighter simulation.</p></div>
-        <div><b>03 / Play together</b><p>Browser rendering and audio, packaged game content, rollback, and measured online play.</p></div>
-      </div>
-    </section>
+  <main id="game">
+    <canvas id="scene" tabindex="0" aria-label="Melee stage and characters. Drag or use arrow keys to rotate the camera."></canvas>
+    <div id="loading" role="status">Loading…</div>
+    <p id="scene-status" class="sr-only" role="status"></p>
+    <button id="menu-toggle" class="icon-button" aria-label="Open menu" aria-haspopup="dialog" aria-controls="menu">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
+    <dialog id="menu" aria-labelledby="menu-title">
+      <div class="menu-heading"><h1 id="menu-title">20XX</h1><button id="menu-close" class="icon-button" aria-label="Close menu">×</button></div>
+      <div id="seats" aria-label="Lobby seats"></div>
+      <p id="room-status" role="status">Offline</p>
+      <button id="create">Create lobby</button>
+      <button id="join" hidden>Join lobby</button>
+      <button id="copy-room" hidden>Copy invite</button>
+      <input id="invite" aria-label="Lobby invitation link" readonly hidden>
+      <button id="leave" class="quiet" hidden>Leave lobby</button>
+      <p id="feedback" role="status" hidden></p>
+      <hr>
+      <label for="scene-view">View</label>
+      <select id="scene-view" disabled><option value="stage">Final Destination</option><option value="fox">Fox</option><option value="mario">Mario</option><option value="marth">Marth</option><option value="falcon">Captain Falcon</option></select>
+      <button id="scene-reset" class="quiet" disabled>Reset camera</button>
+      <button id="fullscreen" class="quiet">Fullscreen</button>
+      <p id="error" role="alert" hidden></p>
+    </dialog>
   </main>
-  <footer><p>An independent work in progress. Super Smash Bros. Melee is © Nintendo / HAL Laboratory. The numeric preview is not a complete fighter or a full-game asset pack.</p></footer>
 </body>
 </html>

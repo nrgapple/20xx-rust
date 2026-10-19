@@ -6,7 +6,12 @@ const gl = canvas.getContext("webgl2", { alpha: false, antialias: true });
 const assets = new Map();
 let program, uniforms, mode = "stage", yaw = 0.16, pitch = 0.14, zoom = 1;
 const names = { fox: "Fox", mario: "Mario", marth: "Marth", falcon: "Captain Falcon" };
-function error(message) { $("scene-status").textContent = message; }
+function error(message) {
+  $("scene-status").textContent = message;
+  $("loading").textContent = message;
+  $("loading").classList.add("failed");
+  $("loading").hidden = false;
+}
 function shader(type, source) {
   const shader = gl.createShader(type); gl.shaderSource(shader, source); gl.compileShader(shader);
   if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(shader));
@@ -70,7 +75,7 @@ function cross(a,b){return[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1
 function dot(a,b){return a.reduce((sum,x,i)=>sum+x*b[i],0);}
 function multiply(a,b){const result=new Float32Array(16);for(let c=0;c<4;c++)for(let r=0;r<4;r++)for(let k=0;k<4;k++)result[c*4+r]+=a[k*4+r]*b[c*4+k];return result;}
 function camera(aspect){
-  const stage=mode==="stage", target=[0,stage?5:9,0], distance=(stage?165:34)*zoom;
+  const stage=mode==="stage", target=[0,stage?5:9,0], distance=(stage?165:34)*zoom*Math.max(1,1.4/aspect);
   const eye=[Math.sin(yaw)*Math.cos(pitch)*distance,target[1]+Math.sin(pitch)*distance,Math.cos(yaw)*Math.cos(pitch)*distance];
   const z=normalize(eye.map((x,i)=>x-target[i])),x=normalize(cross([0,1,0],z)),y=cross(z,x);
   const view=[x[0],y[0],z[0],0,x[1],y[1],z[1],0,x[2],y[2],z[2],0,-dot(x,eye),-dot(y,eye),-dot(z,eye),1];
@@ -117,8 +122,8 @@ async function main(){
   if(!response.ok)throw new Error("The original-asset content pack is not installed on this build.");
   const manifest=await response.json();
   await Promise.all(Object.keys(manifest.assets).map(async id=>{await loadAsset(id,manifest.assets[id]);draw();}));
-  const tris=[...assets.values()].reduce((sum,a)=>sum+a.meshes.reduce((n,m)=>n+m.count/3,0),0);
-  error(`Original model data loaded · ${tris.toLocaleString()} triangles · Rust-converted geometry and textures. Static archive poses; animation and exact material effects are not implemented.`);
+  $("scene-status").textContent="Scene loaded";
+  $("loading").hidden=true;
   $("scene-view").disabled=false;$("scene-reset").disabled=false;
 }
 main().catch(e=>error(e.message));

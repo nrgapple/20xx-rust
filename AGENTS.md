@@ -13,4 +13,5 @@
 - Reference checkouts are research inputs. Read their instructions before editing them; do not silently modify upstream checkouts.
 - Start with binary inspection and a small, evidenced Rust subsystem. Do not claim that an emulator launch or scaffolding is a native Rust port.
 - Run `make check` after Rust changes. Build outputs and downloads stay on the external SSD.
+- Delivery (user, 2026-10-18): public GitHub repository; merge work into main with auto-merge after required checks pass. The public website opens directly to the game surface, with only in-game controls; keep research tools and explanatory documentation out of the published player UI. Do not claim the unfinished engine is playable.
 - No Mistakes is disabled by workspace instructions. Use normal review and relevant checks.

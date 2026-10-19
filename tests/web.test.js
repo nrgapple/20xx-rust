@@ -61,7 +61,9 @@ test("the public entrance and WASM load with no disc", async () => {
   const response = await fetch(base);
   assert.equal(response.status, 200);
   const html = await response.text();
-  assert.match(html, /Create a lobby/);
+  assert.match(html, /<canvas id="scene"/);
+  assert.match(html, /<dialog id="menu"/);
+  assert.doesNotMatch(html, /<header|<footer|id="plot"|Research inspector|The route to/);
   assert.doesNotMatch(html, /type="file"/);
   const wasm = await fetch(`${base}/melee_web.wasm`);
   assert.equal(wasm.headers.get("content-type"), "application/wasm");
@@ -80,7 +82,8 @@ test("the public entrance and WASM load with no disc", async () => {
   assert.deepEqual(output(), first, "the same inputs replay exactly");
   assert.equal(engine.simulate_fall(-1, -1, 60), 0);
   assert.ok(output().x[59] < 0);
-  assert.equal((await fetch(`${base}/inspector.html`)).status, 200);
+  assert.equal((await fetch(`${base}/inspector.html`)).status, 404);
+  assert.equal((await fetch(`${base}/app.js`)).status, 404);
 });
 
 test("experiment links round-trip and reject malformed or unsupported inputs", () => {

@@ -23,35 +23,34 @@ image and patched 20XX image match the full-disc checksums published with the pa
 
 **Public HTTPS:** https://20xx-rust.champtoday.workers.dev
 
-The public entrance requires **no ROM, ISO, original disc, emulator, or upload**.
-It displays original Fox, Mario, Marth, Captain Falcon and Final Destination
-model assets converted by Rust. The viewer shows static stored poses with
-simplified materials; animation and faithful rendering are unfinished. It also
-runs the ported air physics using a small numeric test fixture. Create a lobby, copy the invitation, and have a friend join. Up to four
-players can join and ready up to compare their chosen inputs; every connected browser
-receives the same experiments. Copy an experiment link to replay those inputs later
-without a server-side recording.
+The public entrance opens directly to a full-window scene, with a compact menu
+for lobby invitations, view selection, camera reset, and fullscreen. There is
+no landing page, research navigation, numeric dashboard, or ROM upload.
+Original Fox, Mario, Marth, Captain Falcon, and Final Destination assets are
+converted by Rust and loaded from a prebuilt content pack.
 
-**This is an engine preview, not playable Melee.** There is no complete match
-simulation, combat, faithful renderer, audio, UCF 0.84 integration, or rollback yet.
-The fixture is not a complete fighter or game content pack. See
-[the delivery plan](research/browser-target.md) for remaining work.
+**This is still an incomplete port, not playable Melee.** Characters display
+static stored poses with simplified materials. Combat, complete match simulation,
+faithful rendering/audio, UCF 0.84, and rollback remain unfinished. Four-seat
+lobbies provide presence and invitation links; they do not run multiplayer combat.
+The Rust physics fixture and experiment protocol remain available for automated
+engine tests, but are not exposed in the player interface.
 
-The optional [research inspector](https://20xx-rust.champtoday.workers.dev/inspector.html)
-still reads a developer's local disc with `File.slice`; nothing is uploaded.
-It is separate from the ROM-free player entrance.
+The research inspector sources remain in `web/inspector.html` and `web/app.js`
+for developer use and are excluded from the public build.
 
-Sources are in `web/`, `server/`, and `crates/melee-web`. `npm ci` installs pinned
-web tooling. `make web` builds `web/dist`; `make serve` runs the Worker and lobby
-service on the host at port 8787, bound to `0.0.0.0`. That is **host verification**,
-not remote access. `make web-check` builds and tests the site and real WebSocket
-flows against a local Worker. `make deploy` updates the existing public HTTPS
-site using Wrangler. Only derived meshes/textures enter the graphics pack; no ROM or source archive is shipped.
+`npm ci` installs pinned tooling. `make web` builds the site; `make web-check`
+builds and tests it. `make serve` binds the local Worker to `0.0.0.0:8787` for
+host verification, not remote access. `make deploy` updates the existing public
+HTTPS site. No ROM or source archive is shipped.
 
 ### Deployment
 
 `.github/workflows/ci.yml` runs `make check`, builds the site, and tests the lobby service for every
-push and pull request. Pushes to `main` then deploy to Cloudflare through the
+push to main and pull request. The `check` job is required before merging.
+Auto-merge is enabled, and ready pull requests from branches in this repository
+automatically opt in through `.github/workflows/auto-merge.yml`. External forks
+and drafts are not automatically opted in. Pushes to `main` then deploy to Cloudflare through the
 `production` GitHub environment. This needs:
 
 - repository variable `CLOUDFLARE_ACCOUNT_ID` (already set);
@@ -83,7 +82,7 @@ push and pull request. Pushes to `main` then deploy to Cloudflare through the
 - `reference`: ignored checkouts of the 20XX source library and Melee decompilation.
 
 The normal entry point is `~/Projects/20xx-rust`; files are stored on the external SSD.
-The repository is hosted privately at https://github.com/nrgapple/20xx-rust.
+The public repository is hosted at https://github.com/nrgapple/20xx-rust.
 
 ## Claude Remote Control
 

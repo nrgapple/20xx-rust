@@ -238,3 +238,16 @@ logic ported to Rust. This work is not complete or playable yet.
   Seven web integration tests cover the expanded lobbies and content pack.
 
 Detailed evidence and limitations: [notes/graphics-and-animation.md](notes/graphics-and-animation.md).
+
+## Game-only surface and main delivery — 2026-10-18
+
+- Public entrance now fills the viewport with the original-content scene. Only
+  a compact menu for invitations, four-seat presence, display choice, camera
+  reset and fullscreen remains; no landing copy or physics dashboard.
+- Research HTML/JS is excluded from the published build, and missing routes
+  return 404. The underlying engine remains incomplete and the scene static.
+- Repository made public; main requires CI `check`. Auto-merge enabled, with a
+  workflow opting ready same-repository pull requests in without executing PR
+  code. Drafts and external forks still need deliberate opt-in.
+- GitHub deployment still needs a repository Cloudflare token; this delivery
+  uses the already authenticated host to update the existing HTTPS Worker.
