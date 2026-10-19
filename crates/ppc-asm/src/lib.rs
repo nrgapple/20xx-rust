@@ -5,6 +5,8 @@
 //! original rounding (for example, whether MWCC fused `a * b + c` into
 //! `fmadds`). Anything else is printed as `.word` with its primary opcode.
 
+pub mod interp;
+
 /// A decoded instruction: mnemonic plus operand text.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Insn {
@@ -53,15 +55,25 @@ fn a_form(word: u32, ext: u32, suffix: &str) -> Option<Insn> {
         bits(word, 11, 5),
         bits(word, 6, 5),
     );
+    // Gekko implements only `fres` (single, opcode 59) and `frsqrte` (double,
+    // opcode 63) of the estimate instructions, and no `fsqrt`/`ps_sqrt`.
+    let estimate = match (suffix, ext) {
+        ("s", 24) => Some("fres"),
+        ("", 26) => Some("frsqrte"),
+        ("ps_", 24) => Some("ps_res"),
+        ("ps_", 26) => Some("ps_rsqrte"),
+        (_, 22 | 24 | 26) => return None,
+        _ => None,
+    };
+    if let Some(name) = estimate {
+        return Some(insn(format!("{name}{}", dot(word)), format!("f{d}, f{b}")));
+    }
     let (name, ops) = match ext {
         18 => ("div", format!("f{d}, f{a}, f{b}")),
         20 => ("sub", format!("f{d}, f{a}, f{b}")),
         21 => ("add", format!("f{d}, f{a}, f{b}")),
-        22 => ("sqrt", format!("f{d}, f{b}")),
         23 => ("sel", format!("f{d}, f{a}, f{c}, f{b}")),
-        24 => ("res", format!("f{d}, f{b}")),
         25 => ("mul", format!("f{d}, f{a}, f{c}")),
-        26 => ("rsqrte", format!("f{d}, f{b}")),
         28 => ("msub", format!("f{d}, f{a}, f{c}, f{b}")),
         29 => ("madd", format!("f{d}, f{a}, f{c}, f{b}")),
         30 => ("nmsub", format!("f{d}, f{a}, f{c}, f{b}")),
@@ -98,15 +110,36 @@ fn op63_x(word: u32) -> Option<Insn> {
 }
 
 fn op4(word: u32) -> Option<Insn> {
-    if let Some(i) = a_form(word, bits(word, 1, 5), "ps_") {
-        return Some(i);
-    }
     let (d, a, b, c) = (
         bits(word, 21, 5),
         bits(word, 16, 5),
         bits(word, 11, 5),
         bits(word, 6, 5),
     );
+    // Cache and indexed quantized load/store forms share opcode 4.
+    if bits(word, 1, 10) == 1014 {
+        return Some(insn("dcbz_l", format!("r{a}, r{b}")));
+    }
+    let indexed = match bits(word, 1, 6) {
+        6 => Some("psq_lx"),
+        7 => Some("psq_stx"),
+        38 => Some("psq_lux"),
+        39 => Some("psq_stux"),
+        _ => None,
+    };
+    if let Some(name) = indexed {
+        return Some(insn(
+            name,
+            format!(
+                "f{d}, r{a}, r{b}, {}, qr{}",
+                bits(word, 10, 1),
+                bits(word, 7, 3)
+            ),
+        ));
+    }
+    if let Some(i) = a_form(word, bits(word, 1, 5), "ps_") {
+        return Some(i);
+    }
     let r = dot(word);
     let five = match bits(word, 1, 5) {
         10 => Some(("ps_sum0", format!("f{d}, f{a}, f{c}, f{b}"))),
@@ -203,6 +236,36 @@ fn op31(word: u32) -> Option<Insn> {
             _ => insn("mtspr", format!("{spr}, r{d}")),
         },
         19 => insn("mfcr", format!("r{d}")),
+        144 => insn("mtcrf", format!("{:#x}, r{d}", bits(word, 12, 8))),
+        200 => insn(format!("subfze{r}"), format!("r{d}, r{a}")),
+        232 => insn(format!("subfme{r}"), format!("r{d}, r{a}")),
+        234 => insn(format!("addme{r}"), format!("r{d}, r{a}")),
+        284 => logical("eqv"),
+        412 => logical("orc"),
+        476 => logical("nand"),
+        983 => insn("stfiwx", format!("f{d}, r{a}, r{b}")),
+        55 => insn("lwzux", format!("r{d}, r{a}, r{b}")),
+        183 => insn("stwux", format!("r{d}, r{a}, r{b}")),
+        567 => insn("lfsux", format!("f{d}, r{a}, r{b}")),
+        695 => insn("stfsux", format!("f{d}, r{a}, r{b}")),
+        918 => insn("sthbrx", format!("r{d}, r{a}, r{b}")),
+        790 => insn("lhbrx", format!("r{d}, r{a}, r{b}")),
+        534 => insn("lwbrx", format!("r{d}, r{a}, r{b}")),
+        662 => insn("stwbrx", format!("r{d}, r{a}, r{b}")),
+        371 => insn("mftb", format!("r{d}, {spr}")),
+        83 => insn("mfmsr", format!("r{d}")),
+        146 => insn("mtmsr", format!("r{d}")),
+        595 => insn("mfsr", format!("r{d}, {}", a & 0xf)),
+        210 => insn("mtsr", format!("{}, r{d}", a & 0xf)),
+        512 => insn("mcrxr", format!("cr{}", d >> 2)),
+        598 => insn("sync", ""),
+        854 => insn("eieio", ""),
+        54 => insn("dcbst", format!("r{a}, r{b}")),
+        86 => insn("dcbf", format!("r{a}, r{b}")),
+        278 => insn("dcbt", format!("r{a}, r{b}")),
+        470 => insn("dcbi", format!("r{a}, r{b}")),
+        982 => insn("icbi", format!("r{a}, r{b}")),
+        1014 => insn("dcbz", format!("r{a}, r{b}")),
         _ => return None,
     })
 }
@@ -244,6 +307,7 @@ pub fn decode(word: u32, address: u32) -> Insn {
             16 => Some(insn("bclr", format!("{d}, {a}"))),
             528 if d == 20 => Some(insn(if word & 1 != 0 { "bctrl" } else { "bctr" }, "")),
             150 => Some(insn("isync", "")),
+            50 => Some(insn("rfi", "")),
             33 | 129 | 193 | 225 | 257 | 289 | 417 | 449 => {
                 let name = match bits(word, 1, 10) {
                     33 => "crnor",
@@ -259,6 +323,7 @@ pub fn decode(word: u32, address: u32) -> Insn {
             }
             _ => None,
         },
+        17 if word & 2 != 0 => Some(insn("sc", "")),
         20 | 21 => {
             let name = if word >> 26 == 20 { "rlwimi" } else { "rlwinm" };
             Some(insn(
@@ -271,21 +336,38 @@ pub fn decode(word: u32, address: u32) -> Insn {
                 ),
             ))
         }
+        23 => Some(insn(
+            format!("rlwnm{}", dot(word)),
+            format!(
+                "r{a}, r{d}, r{}, {}, {}",
+                bits(word, 11, 5),
+                bits(word, 6, 5),
+                bits(word, 1, 5)
+            ),
+        )),
         24 if word == 0x6000_0000 => Some(insn("nop", "")),
         24 => Some(insn("ori", format!("r{a}, r{d}, {uimm:#x}"))),
         25 => Some(insn("oris", format!("r{a}, r{d}, {uimm:#x}"))),
         26 => Some(insn("xori", format!("r{a}, r{d}, {uimm:#x}"))),
+        // `xoris rX, rY, 0x8000` is half of MWCC's int-to-float idiom.
+        27 => Some(insn("xoris", format!("r{a}, r{d}, {uimm:#x}"))),
         28 => Some(insn("andi.", format!("r{a}, r{d}, {uimm:#x}"))),
+        29 => Some(insn("andis.", format!("r{a}, r{d}, {uimm:#x}"))),
         31 => op31(word),
         32 => Some(mem("lwz", 'r')),
         33 => Some(mem("lwzu", 'r')),
         34 => Some(mem("lbz", 'r')),
+        35 => Some(mem("lbzu", 'r')),
         36 => Some(mem("stw", 'r')),
         37 => Some(mem("stwu", 'r')),
         38 => Some(mem("stb", 'r')),
+        39 => Some(mem("stbu", 'r')),
         40 => Some(mem("lhz", 'r')),
+        41 => Some(mem("lhzu", 'r')),
         42 => Some(mem("lha", 'r')),
+        43 => Some(mem("lhau", 'r')),
         44 => Some(mem("sth", 'r')),
+        45 => Some(mem("sthu", 'r')),
         46 => Some(mem("lmw", 'r')),
         47 => Some(mem("stmw", 'r')),
         48 => Some(mem("lfs", 'f')),
@@ -358,5 +440,20 @@ mod tests {
         // `<=` on floats: fcmpo then cror eq, lt, eq.
         assert_eq!(text(0x4c40_1382, 0), "cror     2, 0, 2");
         assert_eq!(text(0x0000_0000, 0), ".word    0x00000000 (op 0)");
+    }
+
+    #[test]
+    fn decodes_estimates_and_gekko_specific_forms() {
+        // From the 1.02 DOL: sqrtf__Ff, PSMTXInverse, PSVECMag, and a
+        // `dcbz_l` that must not decode as a (nonexistent) `ps_sqrt`.
+        assert_eq!(text(0xfc40_0834, 0), "frsqrte  f2, f1");
+        assert_eq!(text(0xec00_3830, 0), "fres     f0, f7");
+        assert_eq!(text(0xfc00_082e, 0), "fsel     f0, f0, f0, f1");
+        assert_eq!(text(0x1006_1fec, 0), "dcbz_l   r6, r3");
+        assert_eq!(text(0x1007_3040, 0), "ps_cmpo0 cr0, f7, f6");
+        // Int-to-float idiom in sinf: xoris r0, r0, 0x8000.
+        assert_eq!(text(0x6c00_8000, 0), "xoris    r0, r0, 0x8000");
+        assert_eq!(text(0x7c00_07ae, 0), "stfiwx   f0, r0, r0");
+        assert_eq!(text(0x8c03_0001, 0), "lbzu     r0, 1(r3)");
     }
 }
