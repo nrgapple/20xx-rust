@@ -28,8 +28,8 @@ It displays original Fox, Mario, Marth, Captain Falcon and Final Destination
 model assets converted by Rust. The viewer shows static stored poses with
 simplified materials; animation and faithful rendering are unfinished. It also
 runs the ported air physics using a small numeric test fixture. Create a lobby, copy the invitation, and have a friend join. Up to four
-players can join and ready up to compare their chosen inputs; both browsers receive the
-same experiments. Copy an experiment link to replay those inputs later
+players can join and ready up to compare their chosen inputs; every connected browser
+receives the same experiments. Copy an experiment link to replay those inputs later
 without a server-side recording.
 
 **This is an engine preview, not playable Melee.** There is no complete match
