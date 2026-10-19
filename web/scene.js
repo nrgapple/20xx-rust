@@ -1,9 +1,17 @@
 // Browser presentation only. Mesh/texture decoding and asset preparation are Rust.
-// This viewer does not advance gameplay, collision or animation state.
+// Rust advances original animation streams and skeletons; combat is not yet connected.
 const $ = id => document.getElementById(id);
 const canvas = $("scene");
 const gl = canvas.getContext("webgl2", { alpha: false, antialias: true });
 const assets = new Map();
+let engine, previousTime, accumulated=0;
+const decoder=new TextDecoder();
+function check(status){if(status!==0)throw new Error(decoder.decode(new Uint8Array(engine.memory.buffer,engine.output_ptr(),engine.output_len())));}
+function loadNative(slot,meta,bytes){
+  const mp=engine.alloc(meta.byteLength),bp=engine.alloc(bytes.byteLength);
+  try {new Uint8Array(engine.memory.buffer,mp,meta.byteLength).set(new Uint8Array(meta));new Uint8Array(engine.memory.buffer,bp,bytes.byteLength).set(new Uint8Array(bytes));check(engine.scene_load(slot,mp,meta.byteLength,bp,bytes.byteLength));}
+  finally {engine.dealloc(mp,meta.byteLength);engine.dealloc(bp,bytes.byteLength);}
+}
 let program, uniforms, mode = "stage", yaw = 0.16, pitch = 0.14, zoom = 1;
 const names = { fox: "Fox", mario: "Mario", marth: "Marth", falcon: "Captain Falcon" };
 function error(message) {
@@ -24,9 +32,13 @@ function setup() {
     layout(location=0) in vec3 position;
     layout(location=1) in vec3 normal;
     layout(location=2) in vec2 uv;
+    layout(location=3) in vec4 boneIndex;
+    layout(location=4) in vec4 weight;
+    uniform sampler2D bones;
     uniform mat4 viewProjection; uniform vec3 translation;
+    vec3 skin(vec4 v){vec3 result=vec3(0.0);for(int i=0;i<4;i++){int b=int(boneIndex[i]);result+=weight[i]*vec3(dot(texelFetch(bones,ivec2(0,b),0),v),dot(texelFetch(bones,ivec2(1,b),0),v),dot(texelFetch(bones,ivec2(2,b),0),v));}return result;}
     out vec3 n; out vec2 texcoord;
-    void main(){gl_Position=viewProjection*vec4(position+translation,1.0);n=normal;texcoord=uv;}`);
+    void main(){gl_Position=viewProjection*vec4(skin(vec4(position,1.0))+translation,1.0);n=skin(vec4(normal,0.0));texcoord=uv;}`);
   const fragment = shader(gl.FRAGMENT_SHADER, `#version 300 es
     precision highp float;
     in vec3 n; in vec2 texcoord;
@@ -38,8 +50,8 @@ function setup() {
       outputColor=vec4(c.rgb*light,c.a);}`);
   program=gl.createProgram();gl.attachShader(program,vertex);gl.attachShader(program,fragment);gl.linkProgram(program);
   if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(program));
-  uniforms=Object.fromEntries(["viewProjection","translation","tex","color","textured"].map(k=>[k,gl.getUniformLocation(program,k)]));
-  gl.useProgram(program);gl.uniform1i(uniforms.tex,0);gl.enable(gl.DEPTH_TEST);
+  uniforms=Object.fromEntries(["viewProjection","translation","tex","color","textured","bones"].map(k=>[k,gl.getUniformLocation(program,k)]));
+  gl.useProgram(program);gl.uniform1i(uniforms.tex,0);gl.uniform1i(uniforms.bones,1);gl.enable(gl.DEPTH_TEST);
   gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
 }
 async function verifiedBytes(url, hash) {
@@ -50,10 +62,19 @@ async function verifiedBytes(url, hash) {
   if(digest !== hash)throw new Error("Content checksum mismatch. Reload to fetch the current content pack.");
   return bytes;
 }
-async function loadAsset(id, entry) {
-  const metadata = JSON.parse(new TextDecoder().decode(await verifiedBytes(`content/${entry.metadata}`, entry.metadata_sha256)));
-  if(metadata.version!==1)throw new Error("Unsupported scene format.");
+async function loadAsset(id, entry, slot) {
+  const meta=await verifiedBytes(`content/${entry.metadata}`,entry.metadata_sha256);
+  const metadata=JSON.parse(decoder.decode(meta));
+  if(metadata.version!==2)throw new Error("Unsupported scene format.");
   const bytes=await verifiedBytes(`content/${entry.binary}`,entry.binary_sha256);
+  loadNative(slot,meta,bytes);
+  const clips=metadata.animation?.clips??[];
+  const idle=clips.findIndex(c=>c.name==="Wait1");
+  if(idle>=0)check(engine.scene_play(slot,idle));
+  const boneTexture=gl.createTexture();gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,boneTexture);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
+  gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA32F,3,metadata.joints*2,0,gl.RGBA,gl.FLOAT,new Float32Array(engine.memory.buffer,engine.scene_palette_ptr(slot),metadata.joints*24));
+  gl.activeTexture(gl.TEXTURE0);
   const textures=metadata.textures.map(t=>{
     const tex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,tex);
     gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,t.width,t.height,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array(bytes,t.offset,t.width*t.height*4));
@@ -64,11 +85,11 @@ async function loadAsset(id, entry) {
   const meshes=metadata.meshes.map(m=>{
     const vao=gl.createVertexArray();gl.bindVertexArray(vao);
     const buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buffer);
-    gl.bufferData(gl.ARRAY_BUFFER,new Uint8Array(bytes,m.offset,m.count*32),gl.STATIC_DRAW);
-    [3,3,2].forEach((size,index)=>{gl.enableVertexAttribArray(index);gl.vertexAttribPointer(index,size,gl.FLOAT,false,32,[0,12,24][index]);});
-    return {...m,vao};
+    gl.bufferData(gl.ARRAY_BUFFER,new Uint8Array(bytes,m.skin_offset,m.count*64),gl.STATIC_DRAW);
+    [3,3,2,4,4].forEach((size,index)=>{gl.enableVertexAttribArray(index);gl.vertexAttribPointer(index,size,gl.FLOAT,false,64,[0,12,24,32,48][index]);});
+    return {...m,vao,jointIndex:metadata.skeleton.findIndex(j=>j.offset===m.joint)};
   });
-  assets.set(id,{...metadata,textures,meshes});
+  assets.set(id,{...metadata,textures,meshes,slot,boneTexture,idle,frame:0,clips});
 }
 function normalize(v){const n=Math.hypot(...v);return v.map(x=>x/n);}
 function cross(a,b){return[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];}
@@ -84,11 +105,14 @@ function camera(aspect){
 }
 function drawAsset(id,translation){
   const asset=assets.get(id);if(!asset)return;
+  gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,asset.boneTexture);
+  gl.activeTexture(gl.TEXTURE0);
   gl.uniform3fv(uniforms.translation,translation);
   for(const mesh of asset.meshes){
     // Static ground geometry only: stage sky/particles need their animation and
     // TEV passes; displaying their bind-pose geometry hides the actual platform.
     if(id==="final-destination" && ![1,2,3].includes(mesh.root))continue;
+    if(engine.scene_joint_hidden(asset.slot,mesh.jointIndex))continue;
     gl.bindVertexArray(mesh.vao);gl.uniform4fv(uniforms.color,mesh.color);
     gl.uniform1i(uniforms.textured,mesh.texture!==null);
     if(mesh.texture!==null)gl.bindTexture(gl.TEXTURE_2D,asset.textures[mesh.texture]);
@@ -118,12 +142,39 @@ new ResizeObserver(draw).observe(canvas);
 canvas.addEventListener("webglcontextlost",e=>{e.preventDefault();error("Graphics context lost. Reload to restore the scene.");});
 async function main(){
   setup();draw();
+  engine=(await WebAssembly.instantiateStreaming(fetch("melee_web.wasm"),{})).instance.exports;
   const response=await fetch("content/manifest.json");
   if(!response.ok)throw new Error("The original-asset content pack is not installed on this build.");
   const manifest=await response.json();
-  await Promise.all(Object.keys(manifest.assets).map(async id=>{await loadAsset(id,manifest.assets[id]);draw();}));
+  await Promise.all(Object.keys(manifest.assets).map(async (id,slot)=>{await loadAsset(id,manifest.assets[id],slot);draw();}));
   $("scene-status").textContent="Scene loaded";
   $("loading").hidden=true;
   $("scene-view").disabled=false;$("scene-reset").disabled=false;
+  requestAnimationFrame(animate);
+}
+function animate(now){
+  if(document.hidden){previousTime=undefined;accumulated=0;requestAnimationFrame(animate);return;}
+  if(previousTime!==undefined)accumulated+=Math.min(now-previousTime,100);
+  previousTime=now;
+  try {
+    let changed=false;
+    while(accumulated>=1000/60){
+      for(const asset of assets.values())if(asset.idle>=0){
+        // The display loops the selected idle clip; fighter action transitions
+        // and random idle variants will be owned by the match simulation.
+        if(++asset.frame>=asset.clips[asset.idle].end){check(engine.scene_play(asset.slot,asset.idle));asset.frame=0;}
+        else check(engine.scene_advance(asset.slot));
+      }
+      accumulated-=1000/60;changed=true;
+    }
+    if(changed){
+      for(const asset of assets.values())if(asset.idle>=0){
+        gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,asset.boneTexture);
+        gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,3,asset.joints*2,gl.RGBA,gl.FLOAT,new Float32Array(engine.memory.buffer,engine.scene_palette_ptr(asset.slot),asset.joints*24));
+      }
+      draw();
+    }
+    requestAnimationFrame(animate);
+  }catch(e){error(e.message);}
 }
 main().catch(e=>error(e.message));

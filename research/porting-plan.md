@@ -61,7 +61,10 @@ floating point. Rules (also in `crates/melee/src/lib.rs`):
    a disc. Original archives/assets stay out of Git. The current web preview
    only bundles the small numeric fixture already used in movement tests.
 
-Still to verify: the paired-single (`ps_*`) math in the HSD matrix library,
+Progress: the MSL/lb/SDK math ports and Euler HSD_MtxSRT have developer-only
+DOL differential tests, and original FObj/AObj tracks drive the Rust joint
+palette in WASM (see `notes/native-animation.md`). Hardware reciprocal estimate
+fidelity remains provisional. Still to verify: the remaining HSD matrix paths,
 `frsp` placement where C mixes `double` constants into `float` math, and the
 trig/sqrt implementations (`src/MSL/trigf.c`, `math_ppc.h`, `frsqrte`).
 These need ports that are tested bit for bit against the original.

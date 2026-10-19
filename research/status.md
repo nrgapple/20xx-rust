@@ -251,3 +251,24 @@ Detailed evidence and limitations: [notes/graphics-and-animation.md](notes/graph
   code. Drafts and external forks still need deliberate opt-in.
 - GitHub deployment still needs a repository Cloudflare token; this delivery
   uses the already authenticated host to update the existing HTTPS Worker.
+
+## Rust animation runtime and remaining Claude engine branches — 2026-10-18
+
+- Integrated Claude's existing MSL/lb/SDK math port (`fe701fa`) and stage line
+  collision/query port (`76aa025`, audit notes `522fac0`); they had remained on
+  local worktree branches rather than main. Their existing tests now run with
+  the rest of the project.
+- Added the audited AObj clock/lifecycle, Euler joint transforms and scalar
+  joint animation channels. HSD_MtxSRT matches 512 machine-code test cases bit
+  for bit under the documented differential-test model.
+- Packaged 58 original motion-table entries for Fox, Mario, Marth and Captain
+  Falcon. Rust/WASM advances their original idle animations and supplies bone
+  matrices to GPU skinning. No ROM/archive is required by a player.
+- Added 200 native pose hashes across those clips; the production WASM matches
+  all hashes exactly. Local `make check` passes with developer disc/DOL tests,
+  and eight web integration tests pass.
+- The website still has only the scene and compact controls. There is no match
+  simulation or combat yet: connecting input/action states, ECB collision
+  response, script effects, damage/hit/hurt, full materials/audio/UI, and rollback
+  remains necessary. Idle playback is not presented as multiplayer gameplay.
+- Details and explicit limitations: `research/notes/native-animation.md`.

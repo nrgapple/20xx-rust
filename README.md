@@ -29,8 +29,8 @@ no landing page, research navigation, numeric dashboard, or ROM upload.
 Original Fox, Mario, Marth, Captain Falcon, and Final Destination assets are
 converted by Rust and loaded from a prebuilt content pack.
 
-**This is still an incomplete port, not playable Melee.** Characters display
-static stored poses with simplified materials. Combat, complete match simulation,
+**This is still an incomplete port, not playable Melee.** Characters now run original idle animations through the Rust/WASM track and
+joint interpreter, with simplified rendering materials. Combat, complete match simulation,
 faithful rendering/audio, UCF 0.84, and rollback remain unfinished. Four-seat
 lobbies provide presence and invitation links; they do not run multiplayer combat.
 The Rust physics fixture and experiment protocol remain available for automated
@@ -63,7 +63,7 @@ and drafts are not automatically opted in. Pushes to `main` then deploy to Cloud
 - `crates/gc-disc`: dependency-free reader for GameCube discs (header, DOL, FST files).
 - `crates/hsd-dat`: reader for HAL HSD `.dat` archives (relocations, symbols, big-endian fields).
 - `crates/ppc-asm`: partial Gekko disassembler for porting audits (floating-point ops in full).
-- `crates/melee`: the Rust port. Module layout mirrors the decomp.
+- `crates/melee`: the Rust port, including original animation clocks/tracks/joints and audited game math. Module layout mirrors the decomp.
 - `crates/melee-web`: WebAssembly exports for the ROM-free preview and optional inspector.
 - `web`: the public lobby/preview and optional research inspector.
 - `server`: Cloudflare Worker and four-seat Durable Object rooms.

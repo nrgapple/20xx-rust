@@ -5,6 +5,8 @@
 //! (0 = ok) and leaves JSON, or an error message, in an output buffer that
 //! JavaScript reads with `output_ptr`/`output_len`.
 
+mod animation;
+
 use gc_disc::{parse_fst, Header};
 use hsd_dat::Archive;
 use melee::dat::DatJson;

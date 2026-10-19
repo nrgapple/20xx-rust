@@ -1,4 +1,5 @@
-//! Vector types matching the SDK's `Vec`/`Vec2` (`dolphin/mtx.h`): plain `f32`s.
+//! Vector and matrix types matching the SDK's `Vec`/`Vec2`/`Mtx`/`Quaternion`
+//! (`dolphin/mtx.h`): plain `f32`s, row-major like the C.
 
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Vec2 {
@@ -25,6 +26,24 @@ impl Vec3 {
     }
 }
 
+/// The SDK's `Quaternion` (`x, y, z, w`).
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct Quaternion {
+    pub x: f32,
+    pub y: f32,
+    pub z: f32,
+    pub w: f32,
+}
+
+impl Quaternion {
+    pub const fn new(x: f32, y: f32, z: f32, w: f32) -> Self {
+        Self { x, y, z, w }
+    }
+}
+
+/// The SDK's `Mtx`: `f32[3][4]`, rows of `[x, y, z, translation]`.
+pub type Mtx = [[f32; 4]; 3];
+
 /// The decomp's `ABS(x)`: `((x) < 0 ? -(x) : (x))`. MWCC emits a compare and
 /// `fneg`, not `fabs`, so `-0.0` stays `-0.0`; ported code uses this, not
 /// [`f32::abs`], wherever the C source uses `ABS`.
@@ -37,23 +56,9 @@ pub fn abs_c(x: f32) -> f32 {
     }
 }
 
-/// `sqrtf` from `src/MSL/math_ppc.h` (inlined throughout the game): an
-/// `frsqrte` estimate refined by three Newton steps in double precision.
-///
-/// PROVISIONAL: the operation order and fusing must be confirmed against the
-/// 1.02 machine code, and [`crate::ppc::frsqrte`] is not yet bit-exact.
-pub fn sqrtf(x: f32) -> f32 {
-    if x > 0.0 {
-        let x64 = f64::from(x);
-        let mut guess = crate::ppc::frsqrte(x64);
-        for _ in 0..3 {
-            guess = 0.5 * guess * (3.0 - guess * guess * x64);
-        }
-        (x64 * guess) as f32
-    } else {
-        x
-    }
-}
+/// `sqrtf` from `src/MSL/math_ppc.h` (inlined throughout the game); see
+/// [`crate::msl::sqrtf`], which audits it against the 1.02 machine code.
+pub use crate::msl::sqrtf;
 
 #[cfg(test)]
 mod tests {
@@ -64,13 +69,5 @@ mod tests {
         assert_eq!(abs_c(-1.5), 1.5);
         assert_eq!(abs_c(2.0), 2.0);
         assert!(abs_c(-0.0).is_sign_negative());
-    }
-
-    #[test]
-    fn sqrtf_is_close_and_passes_nonpositive_through() {
-        assert_eq!(sqrtf(4.0), 2.0);
-        assert!((sqrtf(2.0) - std::f32::consts::SQRT_2).abs() <= f32::EPSILON);
-        assert_eq!(sqrtf(-1.0), -1.0);
-        assert_eq!(sqrtf(0.0), 0.0);
     }
 }

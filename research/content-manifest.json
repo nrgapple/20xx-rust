@@ -2,42 +2,42 @@
   "version": 1,
   "assets": {
     "fox": {
-      "metadata": "fox.0788809be5dd3d4e.json",
-      "metadata_sha256": "0788809be5dd3d4ee14ade035b2e37e1eedb78a32100512abefc479f5a395722",
-      "binary": "fox.7fc6b868f9637fcb.bin",
-      "binary_sha256": "7fc6b868f9637fcbc518c1e52f345bf18f27d6cb027e850ae0d31dd10c0a382a",
+      "metadata": "fox.ca0c0a5f296ae310.json",
+      "metadata_sha256": "ca0c0a5f296ae3108b57270abd5d49d2ab785b7e290e2acbd7ad9c65296c6e3c",
+      "binary": "fox.bd7d60a333d622e2.bin",
+      "binary_sha256": "bd7d60a333d622e2a48741e215392ee8223f4693f2e7dee5ccdd7b2e746af5c0",
       "source": "PlFxNr.dat",
       "source_sha256": "f1ebe2af74d34be113614da3204730ea6d09b078ebf8a82d2a9036d58d8e4f8b"
     },
     "mario": {
-      "metadata": "mario.f843a7e54ed6d2aa.json",
-      "metadata_sha256": "f843a7e54ed6d2aa135ff96978f50d57d5433db56474026208af2222680304c8",
-      "binary": "mario.de58bb460dfec691.bin",
-      "binary_sha256": "de58bb460dfec69189cc5f865b06c1c877987d5e2f637b38adb0519d7556ab22",
+      "metadata": "mario.e5335bde389d229e.json",
+      "metadata_sha256": "e5335bde389d229ea79c83c6623b24d6139e8442bcc4c2848b703139c31527b1",
+      "binary": "mario.006f37f7a39daeba.bin",
+      "binary_sha256": "006f37f7a39daeba95a4465ac4c6341d4a8686aa95d06cb91764825b4664f209",
       "source": "PlMrNr.dat",
       "source_sha256": "518df5b1d1ce6775a636f4ca8e8e62fb24be65013cd586451c21a181824903ae"
     },
     "marth": {
-      "metadata": "marth.7f6a09e5256ff93c.json",
-      "metadata_sha256": "7f6a09e5256ff93c05f92ca80333bc55988017eff9add09c138a0fbce98fd83d",
-      "binary": "marth.f8844ca3d3605c90.bin",
-      "binary_sha256": "f8844ca3d3605c905d414a1f6005e520d277e52cb29bba6cacaab012a6ce75b2",
+      "metadata": "marth.f55c6042d2c52522.json",
+      "metadata_sha256": "f55c6042d2c52522649be9b8f897767476aaa0a1bbcd394c35b8e928213327ce",
+      "binary": "marth.f89c3a29a742b2fc.bin",
+      "binary_sha256": "f89c3a29a742b2fc3af5ded23da13b96e280ebd2e2a407869b6f27d46575e9c5",
       "source": "PlMsNr.dat",
       "source_sha256": "e4f2b635373f23510d81cdb395b9633501ca52135f7694eb9a31af7aebe38c72"
     },
     "falcon": {
-      "metadata": "falcon.d4a26f24ec6cf968.json",
-      "metadata_sha256": "d4a26f24ec6cf968418ae931b14758d20809df3a1ceab9b27587925202ae037e",
-      "binary": "falcon.bab7e6b7347a521f.bin",
-      "binary_sha256": "bab7e6b7347a521f758d8e729322dd12e6a80994b1fa694713779a559150c294",
+      "metadata": "falcon.cf224d69d62f87b7.json",
+      "metadata_sha256": "cf224d69d62f87b767aeda7dd5e8c7b492ac9eadd274dbcbe106e9bd1609e382",
+      "binary": "falcon.a7f96dbf7dd64e04.bin",
+      "binary_sha256": "a7f96dbf7dd64e0436856b2440447b104d83be4d6885156ffcec3918f0e3ed03",
       "source": "PlCaNr.dat",
       "source_sha256": "bdc91f7bde1da16ceefe332876c20b65b36ba2f30a1e94b59bb24a2f9fcfe163"
     },
     "final-destination": {
-      "metadata": "final-destination.1cbec0fabce1a0ff.json",
-      "metadata_sha256": "1cbec0fabce1a0ffd408a87b3381be26670f01792cbb2be0eba0e2f0220370aa",
-      "binary": "final-destination.4e09dfbafce22618.bin",
-      "binary_sha256": "4e09dfbafce226185e23573a50fc5d20ed720ece69f8a4bcd8d11bcaff10a1af",
+      "metadata": "final-destination.96a20a126b8abcec.json",
+      "metadata_sha256": "96a20a126b8abcec93e2da33a78abf1c86abec9cc5e6da69eb25bc4aee5525ce",
+      "binary": "final-destination.0bd068ef30586062.bin",
+      "binary_sha256": "0bd068ef30586062d7f54ef22f1ed0e985357bc352fcc36cbe961cf3533f739b",
       "source": "GrNLa.dat",
       "source_sha256": "2a295a733414fb65a7061a5c092144fb197570682562b87ba5567ff3f08abb02"
     }

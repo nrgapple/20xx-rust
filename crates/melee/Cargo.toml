@@ -9,3 +9,4 @@ hsd-dat = { path = "../hsd-dat" }
 
 [dev-dependencies]
 gc-disc = { path = "../gc-disc" }
+ppc-asm = { path = "../ppc-asm" }

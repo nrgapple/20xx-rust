@@ -189,7 +189,7 @@ test("derived graphics content is available without originals and matches record
     const metadataResponse = await fetch(`${base}/content/${asset.metadata}`); assert.equal(metadataResponse.status, 200);
     const metadataBytes = Buffer.from(await metadataResponse.arrayBuffer());
     assert.equal(createHash("sha256").update(metadataBytes).digest("hex"), asset.metadata_sha256);
-    const metadata = JSON.parse(metadataBytes); assert.equal(metadata.version, 1); assert.ok(metadata.meshes.length > 0);
+    const metadata = JSON.parse(metadataBytes); assert.equal(metadata.version, 2); assert.ok(metadata.meshes.length > 0);
     const binaryResponse = await fetch(`${base}/content/${asset.binary}`); assert.equal(binaryResponse.status, 200);
     const bytes = Buffer.from(await binaryResponse.arrayBuffer());
     assert.equal(createHash("sha256").update(bytes).digest("hex"), asset.binary_sha256);
@@ -199,4 +199,36 @@ test("derived graphics content is available without originals and matches record
     }
     for (const tex of metadata.textures) assert.ok(tex.offset + tex.width * tex.height * 4 <= bytes.length);
   }
+});
+
+test("Rust/WASM skeletons match native pose hashes for every packaged clip", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const { createHash } = await import("node:crypto");
+  const expected = JSON.parse(await readFile(new URL("../research/animation-goldens.json", import.meta.url)));
+  const { instance } = await WebAssembly.instantiate(await (await fetch(`${base}/melee_web.wasm`)).arrayBuffer());
+  const e = instance.exports;
+  const check = code => assert.equal(code, 0, new TextDecoder().decode(new Uint8Array(e.memory.buffer, e.output_ptr(), e.output_len())));
+  const manifest = await (await fetch(`${base}/content/manifest.json`)).json();
+  let slot = 0;
+  for (const [id, samples] of Object.entries(expected)) {
+    const asset = manifest.assets[id];
+    const metadataBytes = new Uint8Array(await (await fetch(`${base}/content/${asset.metadata}`)).arrayBuffer());
+    const metadata = JSON.parse(new TextDecoder().decode(metadataBytes));
+    const binary = new Uint8Array(await (await fetch(`${base}/content/${asset.binary}`)).arrayBuffer());
+    const mp = e.alloc(metadataBytes.length), bp = e.alloc(binary.length);
+    new Uint8Array(e.memory.buffer, mp, metadataBytes.length).set(metadataBytes);
+    new Uint8Array(e.memory.buffer, bp, binary.length).set(binary);
+    check(e.scene_load(slot, mp, metadataBytes.length, bp, binary.length));
+    e.dealloc(mp, metadataBytes.length); e.dealloc(bp, binary.length);
+    let clip = -1, frame = 0;
+    for (const sample of samples) {
+      if (sample.clip !== clip) { clip = sample.clip; frame = 0; check(e.scene_play(slot, clip)); }
+      while (frame < sample.frame) { check(e.scene_advance(slot)); frame++; }
+      const bytes = new Uint8Array(e.memory.buffer, e.scene_palette_ptr(slot), metadata.joints * 24 * 4);
+      assert.equal(createHash("sha256").update(bytes).digest("hex"), sample.sha256, `${id}, clip ${clip}, frame ${frame}`);
+    }
+    slot++;
+  }
+  assert.notEqual(e.scene_advance(99), 0);
+  assert.notEqual(e.scene_play(0, 99999), 0);
 });
