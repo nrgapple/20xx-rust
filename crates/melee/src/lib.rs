@@ -13,7 +13,10 @@
 //! - No globals: state the game keeps in globals (RNG seed, `p_ftCommonData`)
 //!   is passed explicitly, so a whole match can be saved, restored, and
 //!   compared for rollback.
-//! - Game data is read from the player's own disc image, never bundled.
+//! - Research tools may inspect local disc images. The player-facing runtime
+//!   must use versioned, prebuilt content and must not require a disc image.
+//!   Original archives and assets stay out of Git; the current browser preview
+//!   uses only a small numeric movement fixture, not a full content pack.
 
 pub mod dat;
 pub mod ft;

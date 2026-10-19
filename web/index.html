@@ -3,77 +3,73 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>20XX Rust — engine inspector</title>
-  <meta name="description" content="A Rust port of Melee 1.02 game logic, running in your browser against your own disc.">
+  <title>20XX Rust — friend lobbies</title>
+  <meta name="description" content="A browser-native Melee port in development. Open the physics preview and share a friend lobby. No ROM needed for the preview.">
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="style.css">
-  <script type="module" src="app.js"></script>
+  <script type="module" src="lobby.js"></script>
+  <script type="module" src="scene.js"></script>
 </head>
 <body>
   <header>
-    <h1>20XX Rust <span class="tag">engine inspector</span></h1>
-    <p class="lede">
-      Melee 1.02 game logic, hand-ported to Rust and running here as WebAssembly.
-      This is <strong>not the playable game yet</strong>: it loads data from your own disc
-      and runs the parts of the engine that are ported so far.
-    </p>
+    <nav><a class="brand" href="/">20XX / RUST</a><a href="inspector.html">Research inspector ↗</a></nav>
+    <p class="eyebrow">BROWSER-NATIVE MELEE · IN DEVELOPMENT</p>
+    <h1>One link.<br>Your next rivalry.</h1>
+    <p class="lede">The goal: faithful Melee, online with friends, with no ROM to find or upload.</p>
+    <p class="notice"><strong>Engine preview, not a playable match yet.</strong> Inspect the original fighter models and stage, then invite up to three friends to test the lobby. Combat is not implemented yet.</p>
   </header>
-
   <main>
-    <section id="disc">
-      <h2><span class="step">1</span> Open your disc</h2>
-      <p>
-        Choose a Super Smash Bros. Melee NTSC 1.02 ISO (vanilla or 20XX 5.0.2).
-        It is read locally with <code>File.slice</code>: nothing is uploaded.
-      </p>
-      <label class="file">
-        <input id="iso" type="file" accept=".iso,.gcm">
-        <span>Choose ISO…</span>
-      </label>
-      <div id="disc-info" class="info" hidden></div>
-      <p id="disc-error" class="error" hidden></p>
+    <section class="scene-panel" aria-labelledby="scene-heading">
+      <div class="scene-title"><div><p class="eyebrow">ORIGINAL ASSET PIPELINE</p><h2 id="scene-heading">Four fighters. The original stage.</h2></div><span class="tag">Static model viewer</span></div>
+      <canvas id="scene" width="1200" height="640" tabindex="0" aria-label="Original Melee models: Fox, Mario, Marth, and Captain Falcon on Final Destination. Drag or use arrow keys to orbit."></canvas>
+      <div class="controls scene-controls">
+        <label>View <select id="scene-view" disabled><option value="stage">Four fighters / Final Destination</option><option value="fox">Fox</option><option value="mario">Mario</option><option value="marth">Marth</option><option value="falcon">Captain Falcon</option></select></label>
+        <button id="scene-reset" class="quiet" disabled>Reset camera</button>
+        <span class="fine">Drag to orbit · scroll to zoom · arrow keys also work</span>
+      </div>
+      <p id="scene-status" class="fine" role="status">Loading converted original models and textures…</p>
+      <p class="fine">These are the original model assets, in their stored poses. This is not a playable match or a finished reproduction of the game's rendering.</p>
     </section>
-
-    <section id="fighter" hidden>
-      <h2><span class="step">2</span> Fighter data</h2>
-      <p>Attributes from the fighter's <code>Pl??.dat</code>, read with exactly the bits on your disc.</p>
-      <select id="fighter-select"></select>
-      <div id="highlights" class="cards"></div>
-      <details>
-        <summary>All <code>ftCo_DatAttrs</code> fields</summary>
-        <table id="attrs"><tbody></tbody></table>
-      </details>
-      <details id="special-details">
-        <summary>Fighter-specific attributes (<code>ftData::ext_attr</code>)</summary>
-        <table id="special"><tbody></tbody></table>
-      </details>
+    <section aria-labelledby="room-heading">
+      <h2 id="room-heading">Bring a friend</h2>
+      <p>Four seats. Anyone with the invitation can join. All connected players can ready up to run the same set of physics experiments.</p>
+      <div class="controls">
+        <button id="create">Create a lobby</button>
+        <button id="join" hidden>Join this lobby</button>
+        <button id="copy-room" class="quiet" hidden>Copy invite link</button>
+        <button id="leave" class="quiet" hidden>Leave</button>
+      </div>
+      <input id="invite" class="link-field" aria-label="Lobby invitation link" readonly hidden>
+      <p id="room-status" role="status">No lobby joined.</p>
+      <div id="seats" class="cards"></div>
+      <button id="ready" disabled>Ready for physics test</button>
+      <p class="fine">Lobbies test presence and shared inputs. Matchmaking, combat, rollback, and playable rounds are still being built.</p>
     </section>
-
-    <section id="lab" hidden>
-      <h2><span class="step">3</span> Air physics lab</h2>
-      <p>
-        The ported Fall physics (<code>ft_80084DB0</code>: fast-fall check, gravity, air drift),
-        integrated like <code>Fighter_procUpdate</code> with no knockback or wind. Starts at rest in the air.
-        Input timers are simulated until <code>Fighter_procInput</code> is ported.
-      </p>
+    <section aria-labelledby="lab-heading">
+      <h2 id="lab-heading">Feel the first piece</h2>
+      <p>Air drift, gravity, and fast fall run in Rust / WebAssembly using a small numeric test fixture. This physics test needs no disc or full-game content.</p>
       <div class="controls">
         <label>Stick X <input id="stick" type="range" min="-1" max="1" step="0.0125" value="1"><output id="stick-out">1.00</output></label>
-        <label>Fast-fall flick on frame <input id="flick" type="number" min="-1" max="119" value="20"> <small>(−1: never)</small></label>
+        <label>Fast-fall frame <input id="flick" type="number" min="-1" max="599" value="20"></label>
         <label>Frames <input id="frames" type="number" min="10" max="600" value="60"></label>
-        <button id="pin" type="button">Pin for comparison</button>
-        <button id="clear" type="button" class="quiet">Clear pins</button>
       </div>
-      <canvas id="plot" width="960" height="420" aria-label="Fall trajectory plot"></canvas>
-      <p id="readout" class="readout"></p>
+      <p class="fine">Fast-fall frame −1 means never. Both runs start at rest in the air; there is no floor or combat.</p>
+      <canvas id="plot" width="960" height="380" aria-label="Air physics trajectories; numeric results below"></canvas>
+      <p id="readout" class="readout" role="status">Loading the Rust engine…</p>
+      <button id="copy-trial" class="quiet" disabled>Copy experiment link</button>
+      <input id="experiment" class="link-field" aria-label="Shared experiment link" readonly hidden>
+      <p id="feedback" role="status"></p>
+      <p id="error" class="error" role="alert" hidden></p>
+    </section>
+    <section>
+      <h2>The route to a real match</h2>
+      <div class="milestones">
+        <div><b>01 / Running now</b><p>Rust input and movement ports, a ROM-free physics preview, and four-person lobbies.</p></div>
+        <div><b>02 / Engine work</b><p>Animation, stage collisions, action states, hit detection, and a complete four-fighter simulation.</p></div>
+        <div><b>03 / Play together</b><p>Browser rendering and audio, packaged game content, rollback, and measured online play.</p></div>
+      </div>
     </section>
   </main>
-
-  <footer>
-    <p>
-      Source: a hand port of the <a href="https://github.com/doldecomp/melee">Melee decompilation</a>.
-      No game data is hosted here; everything comes from the disc you open.
-      Super Smash Bros. Melee is © Nintendo / HAL Laboratory.
-    </p>
-  </footer>
+  <footer><p>An independent work in progress. Super Smash Bros. Melee is © Nintendo / HAL Laboratory. The numeric preview is not a complete fighter or a full-game asset pack.</p></footer>
 </body>
 </html>

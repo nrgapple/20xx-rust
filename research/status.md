@@ -180,3 +180,61 @@ Six agents port in separate worktrees; findings arrive in `research/notes/`.
 Port the `mpLib` collision queries (floor/wall/ceiling line checks used by
 `mpColl`) and islands. Then start the HSD animation and joint system, which ECBs and hitboxes depend
 on. See phase 2 of the porting plan.
+
+## ROM-free entrance and friend lobbies — 2026-10-18 (later)
+
+User clarified that the player must never need an original ROM, ISO, disc,
+emulator, or extraction step. This supersedes the earlier player-disc delivery
+rule. The hand-port approach and ignored research originals remain unchanged.
+
+Implemented:
+
+- The public entrance runs the existing Rust air-physics and controller code
+  without a disc, using the small numeric fixture already exercised by tests.
+  The developer disc inspector remains at `/inspector.html`.
+- A Worker and hibernating Durable Object provide two-seat, link-invited
+  lobbies on the existing public HTTPS deployment. Both players readying up
+  shares the two versioned fixture configurations, executed in both browsers.
+  No original archives, models, textures, or audio were uploaded.
+- Replayable experiment links encode those numeric configurations in a URL
+  fragment. They are not playable-round or match-replay links.
+- Connection heartbeats, explicit rejoin, seat limits, origin checks, message
+  validation/size limits, and per-connection rate limits are implemented.
+- `make check` passed. `make web-check` builds WASM and tests the no-disc entry,
+  repeatable fixture output, link parsing, two-client shared experiments, room
+  isolation/capacity, disconnect/rejoin, origin rejection, malformed payloads,
+  cancellation, and rate limiting. Web checks are now part of GitHub CI.
+- All five web integration tests also passed against public HTTPS. Two browser
+  tabs joined the live site and produced identical two-player result readouts.
+  This verifies the deployed room service, not distinct-device gameplay latency.
+- Actual site screenshots are saved locally in `artifacts/screenshots/` (ignored).
+
+**Still not playable Melee:** no complete frame loop, combat, character/stage
+renderer, audio, full runtime content pack, UCF 0.84 integration, or rollback.
+Decompiling executable behavior does not by itself provide models/animations/
+audio. The next engine work remains collision queries and animation/joints,
+then a validated two-fighter headless match. The final runtime must load
+versioned prebuilt content, not ask a player to provide a disc. See
+[browser-target.md](browser-target.md) for the concrete delivery gates.
+
+## Four-player scope, original models, HSD animation — 2026-10-18 (later)
+
+The user requested four-player Smash with the original graphics/content and all
+logic ported to Rust. This work is not complete or playable yet.
+
+- Rust `scene-export` now converts original Fox, Mario, Marth, Captain Falcon
+  and Final Destination model data into a hash-verified runtime graphics pack.
+  The browser displays 34,817 converted triangles across those assets with
+  textures, stored poses and simplified materials. No ROM is needed to view it.
+- The static viewer is not a full renderer: TEV, animation/visibility, lighting
+  fidelity, effects and audio are unfinished. It is independent of simulation.
+- Hand-ported the HSD FObj track interpreter and Hermite evaluation after DOL
+  audits. A scan visited 1,075,289 tracks across tournament motion entries and
+  passed finite-output and bitwise restore/replay checks. That does not prove
+  original frame fidelity. Joint/AObj integration is still pending.
+- Lobbies support four seats, fifth-client rejection, shared experiments and
+  stable seat labels after disconnects. They do not run a Smash match.
+- `make check` passed, including the new animation and graphics decoder tests.
+  Seven web integration tests cover the expanded lobbies and content pack.
+
+Detailed evidence and limitations: [notes/graphics-and-animation.md](notes/graphics-and-animation.md).

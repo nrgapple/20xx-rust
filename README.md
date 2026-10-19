@@ -21,19 +21,36 @@ image and patched 20XX image match the full-disc checksums published with the pa
 
 ## Website
 
-The browser inspector is live at https://20xx-rust.champtoday.workers.dev.
-Open a Melee 1.02 or 20XX 5.0.2 ISO there. It is read locally in the browser
-and never uploaded. The page identifies the disc, shows every fighter's
-common and fighter-specific attributes, and runs the ported Fall physics in
-an interactive plot. It is not the playable game.
+**Public HTTPS:** https://20xx-rust.champtoday.workers.dev
 
-Sources are in `web/` and `crates/melee-web`. `make web` builds `web/dist`,
-`make serve` serves it at http://localhost:8787, and `make deploy` deploys it
-with Wrangler (`wrangler.jsonc`, Cloudflare Workers static assets).
+The public entrance requires **no ROM, ISO, original disc, emulator, or upload**.
+It displays original Fox, Mario, Marth, Captain Falcon and Final Destination
+model assets converted by Rust. The viewer shows static stored poses with
+simplified materials; animation and faithful rendering are unfinished. It also
+runs the ported air physics using a small numeric test fixture. Create a lobby, copy the invitation, and have a friend join. Up to four
+players can join and ready up to compare their chosen inputs; both browsers receive the
+same experiments. Copy an experiment link to replay those inputs later
+without a server-side recording.
+
+**This is an engine preview, not playable Melee.** There is no complete match
+simulation, combat, faithful renderer, audio, UCF 0.84 integration, or rollback yet.
+The fixture is not a complete fighter or game content pack. See
+[the delivery plan](research/browser-target.md) for remaining work.
+
+The optional [research inspector](https://20xx-rust.champtoday.workers.dev/inspector.html)
+still reads a developer's local disc with `File.slice`; nothing is uploaded.
+It is separate from the ROM-free player entrance.
+
+Sources are in `web/`, `server/`, and `crates/melee-web`. `npm ci` installs pinned
+web tooling. `make web` builds `web/dist`; `make serve` runs the Worker and lobby
+service on the host at port 8787, bound to `0.0.0.0`. That is **host verification**,
+not remote access. `make web-check` builds and tests the site and real WebSocket
+flows against a local Worker. `make deploy` updates the existing public HTTPS
+site using Wrangler. Only derived meshes/textures enter the graphics pack; no ROM or source archive is shipped.
 
 ### Deployment
 
-`.github/workflows/ci.yml` runs `make check` and builds the site for every
+`.github/workflows/ci.yml` runs `make check`, builds the site, and tests the lobby service for every
 push and pull request. Pushes to `main` then deploy to Cloudflare through the
 `production` GitHub environment. This needs:
 
@@ -48,8 +65,12 @@ push and pull request. Pushes to `main` then deploy to Cloudflare through the
 - `crates/hsd-dat`: reader for HAL HSD `.dat` archives (relocations, symbols, big-endian fields).
 - `crates/ppc-asm`: partial Gekko disassembler for porting audits (floating-point ops in full).
 - `crates/melee`: the Rust port. Module layout mirrors the decomp.
-- `crates/melee-web`: WebAssembly exports used by the browser inspector.
-- `web`: the inspector's static page (HTML, CSS, JavaScript).
+- `crates/melee-web`: WebAssembly exports for the ROM-free preview and optional inspector.
+- `web`: the public lobby/preview and optional research inspector.
+- `server`: Cloudflare Worker and four-seat Durable Object rooms.
+- `tests`: ROM-free WASM, invitation protocol, and WebSocket integration tests.
+- `tools/scene-export`: offline Rust conversion of original HSD meshes and textures.
+- `tools/content-pack.py`: checksum-verified runtime graphics packaging (local or published pack).
 - `tools/gc-inspect`: CLI to inspect ISO/GCM images, list files, and extract the DOL or files.
 - `tools/dat-inspect`: validate every archive on a disc, or list one archive's symbols.
 - `tools/dol-inspect`: disassemble functions by decomp symbol; diff two DOLs by symbol.
@@ -118,3 +139,5 @@ Pinned upstream commits and locally computed download hashes are recorded in
 `research/acquisition.json`. The existing Melee decompilation provides a major
 reference for the base game; 20XX-specific assembly and runtime-loaded code still
 need analysis. A matching PowerPC rebuild and a native Rust port are separate goals.
+
+Graphics and animation details, measured coverage, and known limitations: [research/notes/graphics-and-animation.md](research/notes/graphics-and-animation.md).

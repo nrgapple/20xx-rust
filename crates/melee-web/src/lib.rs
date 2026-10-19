@@ -144,6 +144,38 @@ pub extern "C" fn fighters() -> i32 {
     })
 }
 
+/// Load the small numeric fixture already used by the movement/input tests.
+/// This exercises the port without archives; it is not a complete fighter or
+/// a replacement for the animation, collision, and action-state data.
+#[no_mangle]
+pub extern "C" fn load_fixture() -> i32 {
+    respond(|state| {
+        let mut fp = Fighter::default();
+        // See ft/common.rs::tests::fighter and fall_reaches_terminal_and_fast_falls.
+        fp.co_attrs.gravity = 0.23;
+        fp.co_attrs.terminal_velocity = 2.8;
+        fp.co_attrs.fast_fall_velocity = 3.4;
+        fp.co_attrs.air_drift_max = 0.83;
+        fp.co_attrs.air_drift_stick_mul = 0.06;
+        fp.co_attrs.aerial_drift_base = 0.02;
+        fp.co_attrs.aerial_friction = 0.02;
+        fp.co_attrs.air_max_horizontal_velocity = 3.0;
+        state.fighter = Some(fp);
+        state.common = Some(CommonData {
+            horizontal_stick_deadzone: 0.28,
+            vertical_stick_deadzone: 0.28,
+            horizontal_stick_smash_deadzone: 0.25,
+            vertical_stick_smash_deadzone: 0.25,
+            analog_shoulder_deadzone: 0.3,
+            shield_press_threshold: 0.25,
+            x88: 0.6625,
+            x8c: 4,
+            ..CommonData::default()
+        });
+        Ok("{\"profile\":\"fall-fixture-v1\"}".to_owned())
+    })
+}
+
 /// Load `ftCommonData` from the bytes of `PlCo.dat`.
 ///
 /// # Safety

@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>20XX Rust — engine inspector</title>
+  <meta name="description" content="A Rust port of Melee 1.02 game logic, running in your browser against your own disc.">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <header>
+    <a href="/">← Back to lobbies and ROM-free preview</a>
+    <h1>20XX Rust <span class="tag">engine inspector</span></h1>
+    <p class="lede">
+      Melee 1.02 game logic, hand-ported to Rust and running here as WebAssembly.
+      This is <strong>not the playable game yet</strong>: it loads data from your own disc
+      and runs the parts of the engine that are ported so far.
+    </p>
+  </header>
+
+  <main>
+    <section id="disc">
+      <h2><span class="step">1</span> Open your disc</h2>
+      <p>
+        Choose a Super Smash Bros. Melee NTSC 1.02 ISO (vanilla or 20XX 5.0.2).
+        It is read locally with <code>File.slice</code>: nothing is uploaded.
+      </p>
+      <label class="file">
+        <input id="iso" type="file" accept=".iso,.gcm">
+        <span>Choose ISO…</span>
+      </label>
+      <div id="disc-info" class="info" hidden></div>
+      <p id="disc-error" class="error" hidden></p>
+    </section>
+
+    <section id="fighter" hidden>
+      <h2><span class="step">2</span> Fighter data</h2>
+      <p>Attributes from the fighter's <code>Pl??.dat</code>, read with exactly the bits on your disc.</p>
+      <select id="fighter-select"></select>
+      <div id="highlights" class="cards"></div>
+      <details>
+        <summary>All <code>ftCo_DatAttrs</code> fields</summary>
+        <table id="attrs"><tbody></tbody></table>
+      </details>
+      <details id="special-details">
+        <summary>Fighter-specific attributes (<code>ftData::ext_attr</code>)</summary>
+        <table id="special"><tbody></tbody></table>
+      </details>
+    </section>
+
+    <section id="lab" hidden>
+      <h2><span class="step">3</span> Air physics lab</h2>
+      <p>
+        The ported Fall physics (<code>ft_80084DB0</code>: fast-fall check, gravity, air drift),
+        integrated like <code>Fighter_procUpdate</code> with no knockback or wind. Starts at rest in the air.
+        Input passes through the ported HSD pad library and <code>Fighter_procInput</code>.
+      </p>
+      <div class="controls">
+        <label>Stick X <input id="stick" type="range" min="-1" max="1" step="0.0125" value="1"><output id="stick-out">1.00</output></label>
+        <label>Fast-fall flick on frame <input id="flick" type="number" min="-1" max="119" value="20"> <small>(−1: never)</small></label>
+        <label>Frames <input id="frames" type="number" min="10" max="600" value="60"></label>
+        <button id="pin" type="button">Pin for comparison</button>
+        <button id="clear" type="button" class="quiet">Clear pins</button>
+      </div>
+      <canvas id="plot" width="960" height="420" aria-label="Fall trajectory plot"></canvas>
+      <p id="readout" class="readout"></p>
+    </section>
+  </main>
+
+  <footer>
+    <p>
+      Source: a hand port of the <a href="https://github.com/doldecomp/melee">Melee decompilation</a>.
+      No game data is hosted here; everything comes from the disc you open.
+      Super Smash Bros. Melee is © Nintendo / HAL Laboratory.
+    </p>
+  </footer>
+</body>
+</html>

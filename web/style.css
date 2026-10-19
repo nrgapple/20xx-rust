@@ -138,3 +138,37 @@ canvas {
 
 footer { color: var(--muted); font-size: 0.85rem; padding-bottom: 40px; }
 footer a { color: var(--accent-2); }
+
+/* The public entrance and the research inspector share a small stylesheet. */
+[hidden] { display: none !important; }
+a { color: var(--accent-2); }
+nav { display: flex; justify-content: space-between; gap: 20px; align-items: center; margin-bottom: 60px; }
+nav a { text-decoration: none; font-size: .85rem; }
+.brand { font-weight: 800; letter-spacing: .1em; color: var(--text); }
+.eyebrow { font-size: .7rem; letter-spacing: .17em; color: var(--accent); font-weight: 700; }
+body:has(#create) h1 { font-size: clamp(2.8rem, 8vw, 5.5rem); line-height: 1; letter-spacing: -.055em; }
+.notice { border-left: 2px solid var(--accent); padding-left: 16px; color: var(--muted); max-width: 75ch; margin: 28px 0 38px; }
+.notice strong { color: var(--text); }
+.fine { color: var(--muted); font-size: .85rem; margin: 12px 0 0; }
+.link-field { display: block; width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 10px; margin: 12px 0; }
+.milestones { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; }
+.milestones b { font-size: .85rem; color: var(--accent-2); }
+.milestones p { color: var(--muted); font-size: .9rem; }
+#readout { white-space: pre-line; }
+button:disabled { opacity: .45; cursor: not-allowed; }
+:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 4px; }
+@media (max-width: 620px) {
+  .milestones { grid-template-columns: 1fr; gap: 12px; }
+  nav { margin-bottom: 40px; }
+  section { padding: 18px; }
+  .controls label { flex-wrap: wrap; }
+}
+
+.scene-panel { padding: 0; overflow: hidden; }
+.scene-title { padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.scene-title .eyebrow { margin-top: 0; }
+#scene { display: block; height: min(58vw, 560px); min-height: 280px; border-radius: 0; border-left: 0; border-right: 0; touch-action: none; cursor: grab; }
+#scene:active { cursor: grabbing; }
+.scene-controls { margin: 20px 24px 10px; }
+.scene-panel > p { margin: 8px 24px 20px; }
+@media(max-width:620px) { .scene-title { flex-wrap: wrap; padding: 18px; } .scene-controls { margin: 18px; } #scene-view { max-width: 100%; } }

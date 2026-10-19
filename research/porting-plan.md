@@ -15,9 +15,10 @@
 - **Validation corpus:** agent's choice (user, 2026-10-18). Public Slippi
   replays (`.slp`), parsed from the published format, are the first frame-level
   oracle.
-- **Asset delivery: open.** The user wants friends to play from a link with
-  nothing to provide. That conflicts with not redistributing Nintendo's game
-  data; see the discussion in the session log and research/status.md.
+- **Player delivery: no ROM required.** Friends must play from a link with
+  nothing to provide. Disc images are developer research inputs only. The
+  production runtime needs prebuilt, versioned content; the complete content
+  pipeline and distribution status remain unresolved. See `browser-target.md`.
 
 ## Why this is tractable now (observed)
 
@@ -55,8 +56,10 @@ floating point. Rules (also in `crates/melee/src/lib.rs`):
 4. No global state: everything the game keeps in globals (RNG seed,
    `p_ftCommonData`, GObj lists) lives in explicit simulation state. Rollback
    saves and restores this state, and peers hash it to detect desyncs.
-5. Game data is read from the player's disc (`gc-disc` → `hsd-dat` →
-   `melee::dat`); none is committed or bundled.
+5. Research tools read local discs (`gc-disc` → `hsd-dat` → `melee::dat`).
+   The player runtime must use prebuilt versioned content, without requiring
+   a disc. Original archives/assets stay out of Git. The current web preview
+   only bundles the small numeric fixture already used in movement tests.
 
 Still to verify: the paired-single (`ps_*`) math in the HSD matrix library,
 `frsp` placement where C mixes `double` constants into `float` math, and the
@@ -132,7 +135,7 @@ three independent checks:
   `Fighter_procInput`. Full map: `dol-symbol-diff.txt`.
 - 20XX includes **UCF v0.8**, modified for 20XX and toggled by the debug flag
   at `0x803FA210` (`Mechanics & HUD/Gameplay.txt`). Online play today
-  (Slippi) uses UCF 0.84. Which UCF version to ship is an open decision.
+  (Slippi) uses UCF 0.84. The user selected UCF 0.84; integration is still pending.
 - 33 of 34 `Pl??.dat` fighter archives, including `PlCo.dat`, are byte-identical
   between vanilla and 20XX. `PlCa.dat` is 146 bytes larger in 20XX; its
   `ftCo_DatAttrs` and symbol tables are unchanged, and the cause has not been
@@ -148,5 +151,6 @@ three independent checks:
 The decomp has no repository license file, and `tools/dat-cli` is AGPL-3.0;
 no decomp code is copied into this repository. The port is a translation
 derived from studying the decomp, and Nintendo owns the game. Assess the legal
-position before any public distribution. Game assets always come from the
-player's own disc.
+position before any public distribution. The no-ROM player requirement supersedes the earlier player-disc loading
+plan. Full-game content delivery is still unfinished; decompilation and asset
+packaging are separate workstreams.

@@ -1,6 +1,6 @@
 CARGO := $(HOME)/.cargo/bin/cargo
 
-.PHONY: build check test format inspect patch web serve deploy
+.PHONY: build check test format inspect patch web web-check serve deploy
 build:
 	$(CARGO) build --workspace
 check:
@@ -17,7 +17,9 @@ patch:
 	python3 tools/build_20xx.py
 web:
 	tools/build-web.sh
+web-check: web
+	npm test
 serve: web
-	python3 -m http.server 8787 --directory web/dist
+	npm run dev -- --port 8787
 deploy: web
-	npx -y wrangler@4 deploy
+	npm run deploy
