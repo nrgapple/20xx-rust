@@ -11,7 +11,9 @@ use melee::dat::DatJson;
 use melee::ft::data::CommonData;
 use melee::ft::ext_attrs::load_ext_attrs;
 use melee::ft::fighter::{Fighter, GroundOrAir};
+use melee::ft::input::{self, NoHooks, ProcInputEnv};
 use melee::ft::{ft_081b, kinds, load_attributes, load_common_data};
+use melee::hsd::controller::{PadInput, PadLib, PadStatus};
 use std::cell::RefCell;
 
 #[derive(Default)]
@@ -188,27 +190,40 @@ pub unsafe extern "C" fn load_fighter(ptr: *const u8, len: usize, kind: usize) -
 /// control stick held at `stick_x` and flicked fully down on `flick_frame`
 /// (negative: never). Returns `{"x":[..],"y":[..],"vx":[..],"vy":[..],"fast":[..]}`.
 ///
-/// Per frame: the Fall physics callback (`ft_80084DB0`, ported), then the
-/// two `Fighter_procUpdate` steps that apply with no knockback, nudge, or
-/// wind: `self_vel += self_accel` and `cur_pos += self_vel`. Input timers
-/// are simulated here because `Fighter_procInput` is not yet ported.
+/// Input goes through the ported pipeline: each frame a synthetic controller
+/// sample on port 1 (stick x = `stick_x` × 80 rounded, y = -80 once
+/// flicked) passes through the HSD pad library (`PadLib::renew_for_frame`:
+/// clamp to the radius-80 circle, scale by 80) and `Fighter_procInput`
+/// (deadzones, input timers). Then the Fall physics callback (`ft_80084DB0`)
+/// and the two `Fighter_procUpdate` steps that apply with no knockback,
+/// nudge, or wind: `self_vel += self_accel` and `cur_pos += self_vel`.
 #[no_mangle]
 pub extern "C" fn simulate_fall(stick_x: f32, flick_frame: i32, frames: i32) -> i32 {
     respond(|state| {
         let common = state.common.ok_or("load PlCo.dat first")?;
         let mut fp = state.fighter.clone().ok_or("load a fighter first")?;
         fp.ground_or_air = GroundOrAir::Air;
-        fp.active_timer.lstick = [0xfe, 0xfe];
+        fp.pad_port = 0;
+        input::init_input(&mut fp);
+        let mut pads = PadLib::melee();
+        let raw_x = (stick_x * 80.0).round().clamp(-128.0, 127.0) as i8;
         let mut series: [Vec<String>; 5] = Default::default();
         for frame in 0..frames.clamp(0, 600) {
             let down = flick_frame >= 0 && frame >= flick_frame;
-            fp.input.lstick[0].x = stick_x;
-            fp.input.lstick[0].y = if down { -1.0 } else { 0.0 };
-            fp.active_timer.lstick[1] = if frame == flick_frame {
-                0
-            } else {
-                fp.active_timer.lstick[1].saturating_add(1).min(0xfe)
-            };
+            let mut poll = [PadStatus::DISCONNECTED; 4];
+            poll[0] = PadInput {
+                stick_x: raw_x,
+                stick_y: if down { -80 } else { 0 },
+                ..PadInput::default()
+            }
+            .into();
+            pads.renew_for_frame(&poll);
+            input::proc_input(
+                &mut fp,
+                &common,
+                &ProcInputEnv::vs(&pads.game),
+                &mut NoHooks,
+            );
             ft_081b::ft_80084db0(&mut fp, &common);
             fp.self_vel.x += fp.x74_self_accel.x;
             fp.self_vel.y += fp.x74_self_accel.y;
@@ -266,24 +281,40 @@ mod tests {
             fp.co_attrs.terminal_velocity = 2.8;
             fp.co_attrs.fast_fall_velocity = 3.4;
             state.fighter = Some(fp);
+            // 1.02's input thresholds (PlCo.dat).
             state.common = Some(CommonData {
+                horizontal_stick_deadzone: 0.28,
+                vertical_stick_deadzone: 0.28,
+                horizontal_stick_smash_deadzone: 0.25,
+                vertical_stick_smash_deadzone: 0.25,
+                analog_shoulder_deadzone: 0.3,
+                shield_press_threshold: 0.25,
                 x88: 0.6625,
                 x8c: 4,
                 ..CommonData::default()
             });
         });
+        let series = |name: &str| -> Vec<f32> {
+            let out = output();
+            let values = out
+                .split(&format!("\"{name}\":["))
+                .nth(1)
+                .unwrap()
+                .split(']')
+                .next()
+                .unwrap()
+                .to_owned();
+            values.split(',').map(|v| v.parse().unwrap()).collect()
+        };
         assert_eq!(simulate_fall(0.0, 20, 25), 0);
-        let out = output();
-        let vy = out
-            .split("\"vy\":[")
-            .nth(1)
-            .unwrap()
-            .split(']')
-            .next()
-            .unwrap();
-        let vy: Vec<f32> = vy.split(',').map(|v| v.parse().unwrap()).collect();
+        let vy = series("vy");
         assert_eq!(vy[0], -0.23);
         assert_eq!(vy[19], -2.8);
         assert_eq!(vy[20], -3.4);
+        // Full right then down-right: the stick is clamped to the circle,
+        // (80, -80) → (56, -56), so the flick still fast-falls.
+        assert_eq!(simulate_fall(1.0, 5, 8), 0);
+        assert_eq!(series("vy")[5], -3.4);
+        assert_eq!(series("fast")[4..], [0.0, 1.0, 1.0, 1.0]);
     }
 }

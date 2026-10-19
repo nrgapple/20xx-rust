@@ -7,6 +7,7 @@ pub mod ext_attrs;
 mod ext_data;
 pub mod fighter;
 pub mod ft_081b;
+pub mod input;
 pub mod kinds;
 pub mod motion;
 mod motion_data;
