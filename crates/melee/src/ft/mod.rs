@@ -6,6 +6,7 @@ pub mod ext_attrs;
 mod ext_data;
 pub mod fighter;
 pub mod ft_081b;
+pub mod input;
 pub mod kinds;
 
 use data::{CommonData, FighterAttributes};
